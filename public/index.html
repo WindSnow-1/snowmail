@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SnowMail · dart.lat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07111f;
+  --bg2:rgba(9,21,44,0.72);
+  --panel:rgba(13,26,52,0.62);
+  --border:rgba(143,183,255,0.18);
+  --border-soft:rgba(143,183,255,0.08);
+  --text:#e7f0fb;
+  --muted:rgba(214,229,246,0.72);
+  --soft:rgba(185,206,231,0.45);
+  --accent:rgba(101,163,255,0.18);
+  --accent-strong:#8fc0ff;
+  --danger:rgba(255,113,113,0.82);
+  --success:rgba(110,213,161,0.82);
+}
+[data-theme="light"]{
+  --bg:#eef3f8;
+  --bg2:rgba(255,255,255,0.78);
+  --panel:rgba(255,255,255,0.72);
+  --border:rgba(80,120,180,0.18);
+  --border-soft:rgba(80,120,180,0.08);
+  --text:#17304a;
+  --muted:rgba(35,63,95,0.76);
+  --soft:rgba(75,104,139,0.52);
+  --accent:rgba(92,137,224,0.14);
+  --accent-strong:#3d76d6;
+  --danger:rgba(219,84,84,0.88);
+  --success:rgba(41,161,103,0.88);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Inter',sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(111,171,255,0.22), transparent 32%),
+    radial-gradient(circle at top right, rgba(122,240,214,0.14), transparent 26%),
+    linear-gradient(180deg, #08101b 0%, var(--bg) 100%);
+  overflow:hidden;
+}
+[data-theme="light"] body{
+  background:
+    radial-gradient(circle at top left, rgba(108,153,221,0.18), transparent 35%),
+    radial-gradient(circle at top right, rgba(151,203,231,0.14), transparent 28%),
+    linear-gradient(180deg, #f6f9fc 0%, var(--bg) 100%);
+}
+#sky,#snow,#cardsnow{position:fixed;inset:0}
+#sky{z-index:0}
+#snow{z-index:1;pointer-events:none}
+#cardsnow{z-index:12;pointer-events:none}
+.snow-ground{position:fixed;left:0;right:0;bottom:0;height:28px;z-index:2;background:linear-gradient(to top, rgba(220,232,246,0.12), transparent)}
+.app{position:relative;z-index:10;display:flex;gap:18px;height:100vh;max-width:1320px;margin:0 auto;padding:32px 34px}
+.glass{background:var(--bg2);border:1px solid var(--border);backdrop-filter:blur(24px) saturate(1.15);-webkit-backdrop-filter:blur(24px) saturate(1.15);box-shadow:0 18px 60px rgba(0,0,0,0.18)}
+.sidebar{width:320px;min-width:320px;display:flex;flex-direction:column;gap:16px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}
+.card{border-radius:22px}
+.logo-card{padding:28px 24px 22px;text-align:center}
+.logo{font-family:'Cormorant Garamond',serif;font-size:34px;letter-spacing:6px;font-weight:500}
+.logo-sub{margin-top:6px;color:var(--soft);font-size:12px;letter-spacing:3px;text-transform:uppercase}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px}
+.stat{padding:14px 8px;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid var(--border-soft)}
+.stat-value{font-family:'Cormorant Garamond',serif;font-size:28px}
+.stat-label{margin-top:2px;font-size:10px;letter-spacing:1.5px;color:var(--soft);text-transform:uppercase}
+.gen-card{padding:18px 20px}
+.btn-primary,.btn-secondary,.btn-danger,.chip{
+  border:1px solid var(--border);
+  background:var(--accent);
+  color:var(--text);
+  border-radius:12px;
+  cursor:pointer;
+  transition:all .2s ease;
+  font-family:inherit;
+}
+.btn-primary:hover,.btn-secondary:hover,.btn-danger:hover,.chip:hover{transform:translateY(-1px);border-color:rgba(143,183,255,0.35)}
+.btn-primary{width:100%;padding:13px 14px;font-size:14px;font-weight:500}
+.btn-secondary{padding:9px 12px;background:transparent}
+.btn-danger{padding:9px 12px;background:rgba(255,96,96,0.1);border-color:rgba(255,96,96,0.2);color:#ffd0d0}
+.mailbox-card{flex:1;min-height:0;padding:12px}
+.section-title{padding:8px 10px 12px;color:var(--soft);font-size:11px;letter-spacing:2px;text-transform:uppercase}
+.mailbox-list{overflow-y:auto;height:100%;padding:0 4px 4px}
+.mailbox-item{display:flex;align-items:center;gap:10px;padding:12px 10px;border-radius:14px;cursor:pointer;transition:background .2s ease,border-color .2s ease;border:1px solid transparent}
+.mailbox-item:hover{background:rgba(255,255,255,0.03)}
+.mailbox-item.active{background:var(--accent);border-color:var(--border)}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-alive{background:var(--success);box-shadow:0 0 10px rgba(110,213,161,0.7)}
+.dot-expiring{background:#ffc66d;box-shadow:0 0 10px rgba(255,198,109,0.65)}
+.dot-permanent{background:var(--accent-strong);box-shadow:0 0 10px rgba(143,192,255,0.65)}
+.mailbox-info{min-width:0;flex:1}
+.mailbox-name{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mailbox-meta{margin-top:3px;font-size:11px;color:var(--soft)}
+.mailbox-actions{display:flex;gap:6px;opacity:0;transition:opacity .2s ease}
+.mailbox-item:hover .mailbox-actions{opacity:1}
+.icon-btn{padding:5px 8px;border-radius:8px;border:1px solid var(--border-soft);background:transparent;color:var(--muted);cursor:pointer}
+.icon-btn:hover{background:rgba(255,255,255,0.05)}
+.toolbar{display:flex;align-items:center;gap:12px;padding:16px 18px;border-radius:20px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 12px rgba(110,213,161,0.7);animation:pulse 2.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.search{flex:1;padding:10px 14px;border-radius:12px;border:1px solid var(--border-soft);background:rgba(0,0,0,0.12);color:var(--text);outline:none}
+.search::placeholder{color:var(--soft)}
+.toolbar-actions{display:flex;gap:8px}
+.panel{flex:1;min-height:0;border-radius:24px;overflow:hidden;display:flex;flex-direction:column}
+.panel-tabs{display:flex;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border-soft)}
+.chip{padding:8px 14px;background:transparent}
+.chip.active{background:var(--accent)}
+.content{flex:1;min-height:0;display:flex;flex-direction:column}
+.list-view,.detail-view,.api-view{flex:1;min-height:0;display:none}
+.list-view.active,.detail-view.active,.api-view.active{display:flex}
+.list-view{flex-direction:column}
+.list-scroll,.detail-scroll,.api-scroll{flex:1;overflow-y:auto;padding:18px 20px 22px}
+.empty{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--soft);padding:24px}
+.empty strong{display:block;color:var(--muted);margin-bottom:8px;font-weight:500}
+.mail-card{padding:16px;border-radius:16px;border:1px solid var(--border-soft);background:var(--panel);cursor:pointer;transition:transform .2s ease,border-color .2s ease,background .2s ease}
+.mail-card + .mail-card{margin-top:8px}
+.mail-card:hover{transform:translateX(3px);border-color:var(--border);background:rgba(255,255,255,0.04)}
+.mail-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.mail-from{font-size:14px;font-weight:600;color:var(--muted)}
+.mail-time{font-size:11px;color:var(--soft);white-space:nowrap}
+.mail-subject{margin-top:8px;font-size:13px}
+.detail-view{flex-direction:column}
+.detail-head{padding:20px 22px;border-bottom:1px solid var(--border-soft)}
+.detail-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.detail-subject{margin-top:16px;font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:500}
+.detail-meta{margin-top:12px;display:flex;gap:18px;flex-wrap:wrap;color:var(--soft);font-size:12px}
+.detail-meta strong{color:var(--muted);font-weight:500}
+.preview-toggle{display:flex;gap:8px}
+.detail-scroll{padding-top:0}
+.detail-body{padding:22px 0;color:var(--muted);line-height:1.8;white-space:pre-wrap;word-break:break-word}
+.html-frame{width:100%;min-height:420px;border:1px solid var(--border-soft);border-radius:16px;background:#fff}
+.raw-box{padding:18px;border-radius:16px;background:rgba(0,0,0,0.18);border:1px solid var(--border-soft);white-space:pre-wrap;word-break:break-word;font-family:Consolas,'SFMono-Regular',monospace;font-size:12px}
+.api-view{flex-direction:column}
+.api-scroll h2{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:500}
+.api-box,.api-endpoint{margin-top:14px;padding:16px;border-radius:16px;background:var(--panel);border:1px solid var(--border-soft)}
+.api-row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.api-row code,.api-endpoint code{font-family:Consolas,'SFMono-Regular',monospace;font-size:13px}
+.api-copy{display:flex;gap:8px;flex-wrap:wrap}
+.method{display:inline-flex;align-items:center;justify-content:center;min-width:52px;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:1px}
+.method.get{background:rgba(102,204,153,0.16);color:#9be1b9}
+.method.post{background:rgba(255,191,96,0.16);color:#ffd48a}
+.method.delete{background:rgba(255,108,108,0.16);color:#ffb0b0}
+.api-endpoint p{margin-top:8px;color:var(--soft);font-size:13px}
+.api-note{margin-top:16px;color:var(--soft);font-size:13px;line-height:1.6}
+.corner-btns{position:fixed;left:22px;bottom:22px;display:flex;gap:8px;z-index:20}
+.round-btn{width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer}
+.round-btn.off{opacity:.38}
+.toast{position:fixed;left:50%;bottom:42px;transform:translateX(-50%) translateY(18px);padding:12px 18px;border-radius:12px;background:rgba(8,18,36,0.92);border:1px solid var(--border);color:var(--text);opacity:0;pointer-events:none;transition:all .25s ease;z-index:50}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.modal-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,7,16,0.6);backdrop-filter:blur(8px);z-index:40}
+.modal-overlay.show{display:flex}
+.modal{width:min(440px,92vw);padding:28px;border-radius:22px}
+.modal h3{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:500}
+.modal p{margin-top:6px;color:var(--soft);font-size:13px;line-height:1.6}
+.modal input{width:100%;margin-top:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--border-soft);background:rgba(0,0,0,0.14);color:var(--text);outline:none}
+.time-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
+.time-option{padding:12px 8px;border-radius:14px;border:1px solid var(--border-soft);background:var(--panel);text-align:center;cursor:pointer}
+.time-option.selected{background:var(--accent);border-color:var(--border)}
+.time-value{font-family:'Cormorant Garamond',serif;font-size:28px}
+.time-label{font-size:11px;color:var(--soft);margin-top:2px}
+.modal-actions{display:flex;gap:10px;margin-top:18px}
+.modal-result{display:none;margin-top:16px;padding:14px;border-radius:14px;background:var(--panel);border:1px solid var(--border-soft);align-items:center;gap:10px}
+.modal-result.show{display:flex}
+.modal-result code{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:rgba(143,183,255,0.18);border-radius:999px}
+@media (max-width: 900px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100vh;flex-direction:column;padding:20px}
+  .sidebar{width:100%;min-width:0}
+  .panel{min-height:620px}
+}
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<canvas id="snow"></canvas>
+<canvas id="cardsnow"></canvas>
+<div class="snow-ground"></div>
+
+<div class="corner-btns">
+  <button class="round-btn" id="btn-snow" onclick="toggleSnow()" title="切换雪花">✦</button>
+  <button class="round-btn" id="btn-theme" onclick="toggleTheme()" title="切换主题">☼</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal glass">
+    <h3>创建邮箱</h3>
+    <p>你可以输入自定义前缀，也可以留空随机生成。下面的保留时间只影响邮箱本身的有效期。</p>
+    <input id="m-custom" type="text" placeholder="例如 test 或 signup-demo">
+    <div class="time-grid">
+      <div class="time-option" data-hours="6" onclick="pickDuration(this)">
+        <div class="time-value">6</div>
+        <div class="time-label">小时</div>
+      </div>
+      <div class="time-option selected" data-hours="24" onclick="pickDuration(this)">
+        <div class="time-value">24</div>
+        <div class="time-label">小时</div>
+      </div>
+      <div class="time-option" data-hours="72" onclick="pickDuration(this)">
+        <div class="time-value">3</div>
+        <div class="time-label">天</div>
+      </div>
+      <div class="time-option" data-hours="0" onclick="pickDuration(this)">
+        <div class="time-value">∞</div>
+        <div class="time-label">永久</div>
+      </div>
+    </div>
+    <div class="modal-result" id="m-result">
+      <code id="m-address"></code>
+      <button class="btn-secondary" onclick="copyText(document.getElementById('m-address').textContent)">复制</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn-primary" id="btn-go" style="flex:1" onclick="createMailbox()">创建</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <aside class="sidebar">
+    <section class="glass card logo-card" id="panel-logo">
+      <div class="logo">SNOWMAIL</div>
+      <div class="logo-sub" id="domain-label">dart.lat</div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value" id="stat-mailboxes">0</div>
+          <div class="stat-label">邮箱</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="stat-emails">0</div>
+          <div class="stat-label">邮件</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="stat-permanent">0</div>
+          <div class="stat-label">永久</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="glass card gen-card">
+      <button class="btn-primary" onclick="openModal()">新建邮箱</button>
+    </section>
+
+    <section class="glass card mailbox-card" id="panel-addr">
+      <div class="section-title">地址列表</div>
+      <div class="mailbox-list" id="mailbox-list"></div>
+    </section>
+  </aside>
+
+  <main class="main">
+    <section class="glass toolbar">
+      <div class="live-dot"></div>
+      <input id="search" class="search" placeholder="搜索邮箱地址" oninput="renderMailboxes()">
+      <div class="toolbar-actions">
+        <button class="btn-secondary" onclick="refreshAll()">刷新</button>
+        <button class="btn-secondary" onclick="configureApiKey()">API Key</button>
+      </div>
+    </section>
+
+    <section class="glass panel card" id="panel-main">
+      <div class="panel-tabs">
+        <button class="chip active" id="tab-inbox" onclick="switchTab('inbox')">收件箱</button>
+        <button class="chip" id="tab-api" onclick="switchTab('api')">API</button>
+      </div>
+
+      <div class="content">
+        <div class="list-view active" id="view-inbox">
+          <div class="list-scroll" id="mail-list-view"></div>
+        </div>
+
+        <div class="detail-view" id="view-detail">
+          <div class="detail-head">
+            <div class="detail-actions">
+              <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn-secondary" onclick="backToList()">返回列表</button>
+                <button class="btn-secondary" onclick="copyCurrentRaw()">复制原文</button>
+              </div>
+              <div class="preview-toggle">
+                <button class="chip active" id="preview-text" onclick="switchPreview('text')">文本</button>
+                <button class="chip" id="preview-html" onclick="switchPreview('html')">安全 HTML</button>
+                <button class="chip" id="preview-raw" onclick="switchPreview('raw')">源码</button>
+              </div>
+            </div>
+            <div class="detail-subject" id="detail-subject"></div>
+            <div class="detail-meta">
+              <span>发件人 <strong id="detail-from"></strong></span>
+              <span>收件人 <strong id="detail-to"></strong></span>
+              <span>时间 <strong id="detail-time"></strong></span>
+            </div>
+          </div>
+          <div class="detail-scroll">
+            <div class="detail-body" id="detail-text"></div>
+            <iframe class="html-frame" id="detail-html" sandbox="" style="display:none"></iframe>
+            <div class="raw-box" id="detail-raw" style="display:none"></div>
+          </div>
+        </div>
+
+        <div class="api-view" id="view-api">
+          <div class="api-scroll">
+            <h2>API 文档</h2>
+            <div class="api-box">
+              <div class="api-row">
+                <div>
+                  <div style="color:var(--soft);font-size:12px;margin-bottom:6px">Base URL</div>
+                  <code id="api-base"></code>
+                </div>
+                <div class="api-copy">
+                  <button class="btn-secondary" onclick="copyText(location.origin)">复制地址</button>
+                  <button class="btn-secondary" onclick="configureApiKey()">设置 API Key</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="api-endpoint">
+              <span class="method post">POST</span>
+              <code>/api/generate</code>
+              <p>创建邮箱，例如 <code>{"custom":"test","retention_hours":24}</code></p>
+            </div>
+            <div class="api-endpoint">
+              <span class="method get">GET</span>
+              <code>/api/mailboxes</code>
+              <p>获取所有邮箱和邮件数量。</p>
+            </div>
+            <div class="api-endpoint">
+              <span class="method get">GET</span>
+              <code>/api/mailbox/:address</code>
+              <p>查看指定邮箱的全部邮件。</p>
+            </div>
+            <div class="api-endpoint">
+              <span class="method get">GET</span>
+              <code>/api/mailbox/:address/wait?timeout=30</code>
+              <p>等待指定邮箱的新邮件。</p>
+            </div>
+            <div class="api-endpoint">
+              <span class="method delete">DELETE</span>
+              <code>/api/mailboxes/:address</code>
+              <p>删除邮箱和该邮箱下的全部邮件。</p>
+            </div>
+            <div class="api-note">
+              如果服务器启用了 <code>API_KEY</code>，请在请求头里带上 <code>x-api-key</code>，
+              或使用 <code>Authorization: Bearer &lt;key&gt;</code>。
+              页面右上角的 “API Key” 按钮会把 key 存到浏览器本地，之后页面请求会自动带上它。
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const API = location.origin;
+const STORAGE_KEY = 'snowmail_api_key';
+const state = {
+  config: { domain: 'dart.lat', apiKeyEnabled: false },
+  mailboxes: [],
+  emails: [],
+  selectedAddress: '',
+  selectedEmail: null,
+  previewMode: 'text',
+  generatedAddress: '',
+  durationHours: 24,
+  snowEnabled: true,
+  darkTheme: localStorage.getItem('snowmail_theme') !== 'light',
+};
+
+document.getElementById('api-base').textContent = location.origin;
+
+function getStoredApiKey() {
+  const fromQuery = new URLSearchParams(location.search).get('key');
+  if (fromQuery) {
+    localStorage.setItem(STORAGE_KEY, fromQuery);
+    return fromQuery;
+  }
+  return localStorage.getItem(STORAGE_KEY) || '';
+}
+
+function requestHeaders(json = false) {
+  const headers = {};
+  const apiKey = getStoredApiKey();
+  if (json) {
+    headers['Content-Type'] = 'application/json';
+  }
+  if (apiKey) {
+    headers['x-api-key'] = apiKey;
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+  return headers;
+}
+
+async function apiFetch(path, options = {}) {
+  const init = {
+    ...options,
+    headers: {
+      ...requestHeaders(false),
+      ...(options.headers || {}),
+    },
+  };
+  const response = await fetch(`${API}${path}`, init);
+  const contentType = response.headers.get('content-type') || '';
+  const payload = contentType.includes('application/json') ? await response.json() : await response.text();
+
+  if (!response.ok) {
+    const message = typeof payload === 'string' ? payload : payload.error || '请求失败';
+    throw new Error(message);
+  }
+  return payload;
+}
+
+function toast(message) {
+  const el = document.getElementById('toast');
+  el.textContent = message;
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function escapeHtml(value) {
+  const div = document.createElement('div');
+  div.textContent = value || '';
+  return div.innerHTML;
+}
+
+function copyText(value) {
+  if (!value) {
+    toast('没有可复制的内容');
+    return;
+  }
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(value).then(() => toast('已复制')).catch(() => fallbackCopy(value));
+    return;
+  }
+  fallbackCopy(value);
+}
+
+function fallbackCopy(value) {
+  const input = document.createElement('textarea');
+  input.value = value;
+  input.style.position = 'fixed';
+  input.style.left = '-9999px';
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand('copy');
+  document.body.removeChild(input);
+  toast('已复制');
+}
+
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', state.darkTheme ? 'dark' : 'light');
+  document.getElementById('btn-theme').textContent = state.darkTheme ? '☼' : '☾';
+  localStorage.setItem('snowmail_theme', state.darkTheme ? 'dark' : 'light');
+}
+
+function toggleTheme() {
+  state.darkTheme = !state.darkTheme;
+  applyTheme();
+}
+
+function toggleSnow() {
+  state.snowEnabled = !state.snowEnabled;
+  document.getElementById('btn-snow').classList.toggle('off', !state.snowEnabled);
+}
+
+function configureApiKey() {
+  const current = getStoredApiKey();
+  const next = prompt('请输入 API Key。留空并确认可以清除当前保存的 key。', current);
+  if (next === null) {
+    return;
+  }
+  const trimmed = next.trim();
+  if (trimmed) {
+    localStorage.setItem(STORAGE_KEY, trimmed);
+    toast('API Key 已保存');
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+    toast('API Key 已清除');
+  }
+  refreshAll();
+}
+
+function switchTab(tab) {
+  document.getElementById('tab-inbox').classList.toggle('active', tab === 'inbox');
+  document.getElementById('tab-api').classList.toggle('active', tab === 'api');
+  document.getElementById('view-inbox').classList.toggle('active', tab === 'inbox' && !state.selectedEmail);
+  document.getElementById('view-detail').classList.toggle('active', tab === 'inbox' && Boolean(state.selectedEmail));
+  document.getElementById('view-api').classList.toggle('active', tab === 'api');
+}
+
+function backToList() {
+  state.selectedEmail = null;
+  document.getElementById('view-detail').classList.remove('active');
+  document.getElementById('view-inbox').classList.add('active');
+  switchTab('inbox');
+}
+
+function pickDuration(button) {
+  document.querySelectorAll('.time-option').forEach(item => item.classList.remove('selected'));
+  button.classList.add('selected');
+  state.durationHours = Number(button.dataset.hours);
+}
+
+function openModal() {
+  state.generatedAddress = '';
+  document.getElementById('m-custom').value = '';
+  document.getElementById('m-result').classList.remove('show');
+  document.getElementById('btn-go').textContent = '创建';
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+  if (state.generatedAddress) {
+    refreshAll();
+  }
+}
+
+async function createMailbox() {
+  const button = document.getElementById('btn-go');
+  if (state.generatedAddress) {
+    closeModal();
+    selectMailbox(state.generatedAddress);
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = '创建中...';
+
+  try {
+    const custom = document.getElementById('m-custom').value.trim();
+    const data = await apiFetch('/api/generate', {
+      method: 'POST',
+      headers: requestHeaders(true),
+      body: JSON.stringify({
+        custom: custom || undefined,
+        retention_hours: state.durationHours,
+      }),
+    });
+    state.generatedAddress = data.address;
+    document.getElementById('m-address').textContent = data.address;
+    document.getElementById('m-result').classList.add('show');
+    button.textContent = '打开收件箱';
+    button.disabled = false;
+    toast('邮箱创建成功');
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = '创建';
+    toast(error.message || '创建失败');
+  }
+}
+
+function formatTime(ts) {
+  if (!ts) return '';
+  const date = new Date(`${ts}Z`);
+  const diff = Date.now() - date.getTime();
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`;
+  return date.toLocaleString('zh-CN', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function getMailboxExpiry(expiresAt) {
+  if (!expiresAt) return { text: '永久', cls: 'dot-permanent' };
+  const diff = new Date(`${expiresAt}Z`) - Date.now();
+  if (diff <= 0) return { text: '已过期', cls: 'dot-expiring' };
+  const hours = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  if (hours >= 24) return { text: `${Math.floor(hours / 24)} 天后`, cls: 'dot-alive' };
+  if (hours > 0) return { text: `${hours} 小时后`, cls: hours < 2 ? 'dot-expiring' : 'dot-alive' };
+  return { text: `${mins} 分钟后`, cls: 'dot-expiring' };
+}
+
+function renderMailboxes() {
+  const search = document.getElementById('search').value.trim().toLowerCase();
+  const root = document.getElementById('mailbox-list');
+  const items = search
+    ? state.mailboxes.filter(item => item.address.toLowerCase().includes(search))
+    : state.mailboxes;
+
+  if (!items.length) {
+    root.innerHTML = `
+      <div class="empty">
+        <div>
+          <strong>还没有可显示的邮箱</strong>
+          你可以先创建一个地址，或者检查一下 API Key 是否填写正确。
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  root.innerHTML = items
+    .map(item => {
+      const expiry = getMailboxExpiry(item.expires_at);
+      return `
+        <div class="mailbox-item${state.selectedAddress === item.address ? ' active' : ''}" onclick="selectMailbox('${item.address}')">
+          <div class="dot ${expiry.cls}"></div>
+          <div class="mailbox-info">
+            <div class="mailbox-name">${escapeHtml(item.address)}</div>
+            <div class="mailbox-meta">${item.email_count || 0} 封邮件 · ${expiry.text}</div>
+          </div>
+          <div class="mailbox-actions">
+            <button class="icon-btn" onclick="event.stopPropagation();copyText('${item.address}')">复制</button>
+            <button class="icon-btn" onclick="event.stopPropagation();deleteMailbox('${item.address}')">删除</button>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+function renderMailList() {
+  const root = document.getElementById('mail-list-view');
+  if (!state.selectedAddress) {
+    root.innerHTML = `
+      <div class="empty">
+        <div>
+          <strong>先选择一个邮箱</strong>
+          选中左侧地址后，这里会显示收到的邮件。
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if (!state.emails.length) {
+    root.innerHTML = `
+      <div class="empty">
+        <div>
+          <strong>${escapeHtml(state.selectedAddress)}</strong>
+          这个邮箱暂时还没有收到邮件。
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  root.innerHTML = state.emails
+    .map(mail => `
+      <div class="mail-card" onclick="showMail(${mail.id})">
+        <div class="mail-top">
+          <div class="mail-from">${escapeHtml(mail.sender)}</div>
+          <div class="mail-time">${formatTime(mail.received_at)}</div>
+        </div>
+        <div class="mail-subject">${escapeHtml(mail.subject || '(无主题)')}</div>
+      </div>
+    `)
+    .join('');
+}
+
+function showMail(id) {
+  const mail = state.emails.find(item => item.id === id);
+  if (!mail) return;
+
+  state.selectedEmail = mail;
+  state.previewMode = 'text';
+  document.getElementById('detail-subject').textContent = mail.subject || '(无主题)';
+  document.getElementById('detail-from').textContent = mail.sender || '';
+  document.getElementById('detail-to').textContent = mail.recipient || '';
+  document.getElementById('detail-time').textContent = formatTime(mail.received_at);
+  document.getElementById('detail-text').textContent = mail.body_text || mail.body_html || '(无内容)';
+  document.getElementById('detail-html').srcdoc = mail.body_html || '<p style="font-family: sans-serif; padding: 24px;">这封邮件没有 HTML 内容。</p>';
+  document.getElementById('detail-raw').textContent = '正在加载原始邮件...';
+  switchPreview('text');
+  document.getElementById('view-inbox').classList.remove('active');
+  document.getElementById('view-detail').classList.add('active');
+  switchTab('inbox');
+  loadRawMail(mail.id);
+}
+
+function switchPreview(mode) {
+  state.previewMode = mode;
+  document.getElementById('preview-text').classList.toggle('active', mode === 'text');
+  document.getElementById('preview-html').classList.toggle('active', mode === 'html');
+  document.getElementById('preview-raw').classList.toggle('active', mode === 'raw');
+  document.getElementById('detail-text').style.display = mode === 'text' ? 'block' : 'none';
+  document.getElementById('detail-html').style.display = mode === 'html' ? 'block' : 'none';
+  document.getElementById('detail-raw').style.display = mode === 'raw' ? 'block' : 'none';
+}
+
+async function loadRawMail(id) {
+  try {
+    const raw = await apiFetch(`/api/email/${id}/raw`);
+    document.getElementById('detail-raw').textContent = raw || '(空)';
+  } catch (error) {
+    document.getElementById('detail-raw').textContent = `原始邮件加载失败：${error.message}`;
+  }
+}
+
+function copyCurrentRaw() {
+  const raw = document.getElementById('detail-raw').textContent;
+  copyText(raw);
+}
+
+async function fetchConfig() {
+  try {
+    const config = await apiFetch('/api/config');
+    state.config = config;
+  } catch (error) {
+    state.config = { domain: 'dart.lat', apiKeyEnabled: Boolean(getStoredApiKey()) };
+  }
+  document.getElementById('domain-label').textContent = state.config.domain || 'dart.lat';
+  document.title = `SnowMail · ${state.config.domain || 'dart.lat'}`;
+}
+
+async function fetchStats() {
+  const stats = await apiFetch('/api/stats');
+  document.getElementById('stat-mailboxes').textContent = stats.total_mailboxes || 0;
+  document.getElementById('stat-emails').textContent = stats.total_emails || 0;
+  document.getElementById('stat-permanent').textContent = stats.permanent || 0;
+}
+
+async function fetchMailboxes() {
+  const data = await apiFetch('/api/mailboxes');
+  state.mailboxes = data.mailboxes || [];
+  renderMailboxes();
+}
+
+async function fetchEmails(address) {
+  if (!address) {
+    state.emails = [];
+    renderMailList();
+    return;
+  }
+  const data = await apiFetch(`/api/mailbox/${encodeURIComponent(address)}`);
+  const previousCount = state.emails.length;
+  state.emails = data.emails || [];
+  renderMailList();
+  if (previousCount > 0 && state.emails.length > previousCount) {
+    const oldTitle = document.title;
+    document.title = `新邮件 · ${oldTitle}`;
+    setTimeout(() => {
+      document.title = oldTitle;
+    }, 4000);
+  }
+}
+
+async function refreshAll() {
+  try {
+    await fetchConfig();
+    await fetchStats();
+    await fetchMailboxes();
+    await fetchEmails(state.selectedAddress);
+  } catch (error) {
+    toast(error.message || '刷新失败');
+  }
+}
+
+async function selectMailbox(address) {
+  state.selectedAddress = address;
+  state.selectedEmail = null;
+  renderMailboxes();
+  try {
+    await fetchEmails(address);
+    document.getElementById('view-detail').classList.remove('active');
+    document.getElementById('view-inbox').classList.add('active');
+  } catch (error) {
+    toast(error.message || '加载邮件失败');
+  }
+}
+
+async function deleteMailbox(address) {
+  if (!confirm(`确认删除 ${address} 吗？`)) {
+    return;
+  }
+  try {
+    await apiFetch(`/api/mailboxes/${encodeURIComponent(address)}`, { method: 'DELETE' });
+    if (state.selectedAddress === address) {
+      state.selectedAddress = '';
+      state.selectedEmail = null;
+      state.emails = [];
+      renderMailList();
+      backToList();
+    }
+    toast('邮箱已删除');
+    await refreshAll();
+  } catch (error) {
+    toast(error.message || '删除失败');
+  }
+}
+
+const skyCanvas = document.getElementById('sky');
+const snowCanvas = document.getElementById('snow');
+const cardSnowCanvas = document.getElementById('cardsnow');
+const skyCtx = skyCanvas.getContext('2d');
+const snowCtx = snowCanvas.getContext('2d');
+const cardSnowCtx = cardSnowCanvas.getContext('2d');
+
+let width = 0;
+let height = 0;
+let mouseX = -999;
+let mouseY = -999;
+let velocityX = 0;
+let velocityY = 0;
+let prevMouseX = -999;
+let prevMouseY = -999;
+
+const stars = Array.from({ length: 110 }, () => ({
+  x: Math.random() * 3000,
+  y: Math.random() * 2000,
+  r: Math.random() * 1.2 + 0.2,
+  phase: Math.random() * Math.PI * 2,
+  speed: 0.003 + Math.random() * 0.008,
+  base: Math.random() * 0.35 + 0.18,
+}));
+
+const flakes = [];
+const clumps = [];
+let piles = [];
+
+function resizeCanvases() {
+  width = window.innerWidth;
+  height = window.innerHeight;
+  [skyCanvas, snowCanvas, cardSnowCanvas].forEach(canvas => {
+    canvas.width = width;
+    canvas.height = height;
+  });
+}
+
+function createFlake(initial = false) {
+  const radius = Math.random() < 0.65 ? 0.9 + Math.random() * 0.8 : 1.8 + Math.random() * 1.4;
+  return {
+    x: Math.random() * (width + 100) - 50,
+    y: initial ? Math.random() * height : -10 - Math.random() * 120,
+    r: radius,
+    vy: 0.12 + Math.random() * 0.3 + radius * 0.04,
+    vx: 0,
+    drift: (Math.random() - 0.5) * 0.28 + 0.04,
+    wobble: Math.random() * Math.PI * 2,
+    wobbleSpeed: 0.003 + Math.random() * 0.006,
+    wobbleAmp: 0.25 + Math.random() * 0.45,
+    alpha: 0.35 + Math.random() * 0.5,
+  };
+}
+
+function getPileRects() {
+  return ['panel-logo', 'panel-addr', 'panel-main']
+    .map(id => {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      const rect = el.getBoundingClientRect();
+      return { x: rect.left, y: rect.top, w: rect.width };
+    })
+    .filter(Boolean);
+}
+
+function initCardSnow() {
+  piles = getPileRects().map(rect => {
+    const segments = Math.ceil(rect.w / 3);
+    const pile = [];
+    for (let i = 0; i < segments; i += 1) {
+      const baseHeight = 4 + Math.sin(i * 0.3) * 2 + Math.random() * 3;
+      pile.push({
+        x: rect.x + (i / segments) * rect.w,
+        baseY: rect.y,
+        h: baseHeight,
+        maxH: baseHeight,
+      });
+    }
+    return { rect, pile, lastDrop: Date.now() };
+  });
+}
+
+function drawSky() {
+  const gradient = state.darkTheme
+    ? skyCtx.createLinearGradient(0, 0, 0, height)
+    : skyCtx.createLinearGradient(0, 0, 0, height);
+  if (state.darkTheme) {
+    gradient.addColorStop(0, '#06101c');
+    gradient.addColorStop(0.45, '#0b1c35');
+    gradient.addColorStop(1, '#12284a');
+  } else {
+    gradient.addColorStop(0, '#f5f8fc');
+    gradient.addColorStop(0.5, '#dde8f3');
+    gradient.addColorStop(1, '#cadced');
+  }
+  skyCtx.fillStyle = gradient;
+  skyCtx.fillRect(0, 0, width, height);
+
+  if (!state.darkTheme) return;
+
+  stars.forEach(star => {
+    star.phase += star.speed;
+    const alpha = star.base + Math.sin(star.phase) * star.base * 0.6;
+    if (alpha <= 0) return;
+    skyCtx.beginPath();
+    skyCtx.arc(star.x % width, star.y % height, star.r, 0, Math.PI * 2);
+    skyCtx.fillStyle = `rgba(214,231,255,${alpha.toFixed(3)})`;
+    skyCtx.fill();
+  });
+}
+
+function drawSnow() {
+  snowCtx.clearRect(0, 0, width, height);
+  if (!state.snowEnabled) return;
+
+  const alphaScale = state.darkTheme ? 1 : 0.42;
+  flakes.forEach(flake => {
+    flake.wobble += flake.wobbleSpeed;
+    flake.y += flake.vy;
+    flake.x += flake.drift + Math.sin(flake.wobble) * flake.wobbleAmp + flake.vx;
+    flake.vx *= 0.96;
+
+    const dx = flake.x - mouseX;
+    const dy = flake.y - mouseY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 100 && dist > 0) {
+      const force = (100 - dist) / 100;
+      flake.vx += (dx / dist) * force * 1.2 + velocityX * force * 0.08;
+      flake.y += (dy / dist) * force * 0.35;
+    }
+
+    if (flake.y > height + 14 || flake.x < -80 || flake.x > width + 80) {
+      Object.assign(flake, createFlake(false));
+    }
+
+    snowCtx.beginPath();
+    snowCtx.arc(flake.x, flake.y, flake.r, 0, Math.PI * 2);
+    snowCtx.fillStyle = `rgba(255,255,255,${(flake.alpha * alphaScale).toFixed(3)})`;
+    snowCtx.fill();
+  });
+}
+
+function drawCardSnow() {
+  cardSnowCtx.clearRect(0, 0, width, height);
+  piles.forEach(group => {
+    const { rect, pile } = group;
+    if (!pile.length) return;
+
+    cardSnowCtx.save();
+    cardSnowCtx.beginPath();
+    cardSnowCtx.moveTo(rect.x - 2, rect.y + 2);
+    for (let i = 0; i < pile.length; i += 1) {
+      const current = pile[i];
+      const y = current.baseY - current.h;
+      if (i === 0) {
+        cardSnowCtx.lineTo(current.x, y);
+      } else {
+        const prev = pile[i - 1];
+        cardSnowCtx.quadraticCurveTo(
+          (prev.x + rect.w / pile.length + current.x) / 2,
+          (prev.baseY - prev.h + y) / 2 - 1,
+          current.x,
+          y
+        );
+      }
+    }
+    cardSnowCtx.lineTo(rect.x + rect.w + 2, rect.y + 2);
+    cardSnowCtx.closePath();
+    const gradient = cardSnowCtx.createLinearGradient(0, rect.y - 10, 0, rect.y + 3);
+    gradient.addColorStop(0, state.darkTheme ? 'rgba(232,242,255,0.75)' : 'rgba(255,255,255,0.92)');
+    gradient.addColorStop(1, state.darkTheme ? 'rgba(200,216,238,0.12)' : 'rgba(214,225,241,0.2)');
+    cardSnowCtx.fillStyle = gradient;
+    cardSnowCtx.fill();
+    cardSnowCtx.restore();
+
+    if (Date.now() - group.lastDrop > 2200 + Math.random() * 3600) {
+      group.lastDrop = Date.now();
+      const index = Math.floor(Math.random() * pile.length);
+      if (pile[index].h > 2) {
+        const dropSize = 1.5 + Math.random() * 2.4;
+        pile[index].h -= dropSize;
+        for (let i = 0; i < 3; i += 1) {
+          clumps.push({
+            x: pile[index].x + (Math.random() - 0.5) * 4,
+            y: pile[index].baseY - pile[index].h,
+            vy: 0.2 + Math.random() * 0.4,
+            vx: (Math.random() - 0.5) * 0.8,
+            r: dropSize * 0.5 + Math.random(),
+            life: 1,
+          });
+        }
+      }
+    }
+
+    pile.forEach(item => {
+      if (item.h < item.maxH) item.h += 0.003;
+    });
+  });
+
+  for (let i = clumps.length - 1; i >= 0; i -= 1) {
+    const item = clumps[i];
+    item.y += item.vy;
+    item.vy += 0.03;
+    item.x += item.vx;
+    item.life -= 0.01;
+    if (item.life <= 0) {
+      clumps.splice(i, 1);
+      continue;
+    }
+    cardSnowCtx.beginPath();
+    cardSnowCtx.arc(item.x, item.y, item.r, 0, Math.PI * 2);
+    cardSnowCtx.fillStyle = `rgba(226,238,255,${(item.life * 0.6).toFixed(3)})`;
+    cardSnowCtx.fill();
+  }
+}
+
+function animate() {
+  drawSky();
+  drawSnow();
+  drawCardSnow();
+  requestAnimationFrame(animate);
+}
+
+window.addEventListener('resize', () => {
+  resizeCanvases();
+  setTimeout(initCardSnow, 80);
+});
+
+window.addEventListener('mousemove', event => {
+  if (prevMouseX > -900) {
+    velocityX = event.clientX - prevMouseX;
+    velocityY = event.clientY - prevMouseY;
+  }
+  prevMouseX = mouseX = event.clientX;
+  prevMouseY = mouseY = event.clientY;
+});
+
+setInterval(() => {
+  velocityX *= 0.9;
+  velocityY *= 0.9;
+}, 50);
+
+resizeCanvases();
+for (let i = 0; i < 180; i += 1) {
+  flakes.push(createFlake(true));
+}
+setTimeout(initCardSnow, 300);
+applyTheme();
+refreshAll();
+renderMailList();
+setInterval(() => {
+  refreshAll();
+}, 10000);
+animate();
+</script>
+</body>
+</html>
