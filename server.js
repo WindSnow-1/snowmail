@@ -51,10 +51,15 @@ const stmts = {
     VALUES (?, ?, ?, ?, ?, ?)
   `),
   getEmails: db.prepare(`
-    SELECT id, recipient, sender, subject, body_text, body_html, received_at
+    SELECT id, recipient, sender, subject, received_at
     FROM emails
     WHERE LOWER(recipient) = LOWER(?)
     ORDER BY received_at DESC
+  `),
+  getEmailById: db.prepare(`
+    SELECT id, recipient, sender, subject, body_text, body_html, received_at
+    FROM emails
+    WHERE id = ?
   `),
   getLatest: db.prepare(`
     SELECT id, recipient, sender, subject, body_text, body_html, received_at
@@ -323,6 +328,14 @@ app.get('/api/mailbox/:address', auth, (req, res) => {
   const address = req.params.address.toLowerCase();
   const emails = stmts.getEmails.all(address);
   res.json({ address, count: emails.length, emails });
+});
+
+app.get('/api/email/:id', auth, (req, res) => {
+  const email = stmts.getEmailById.get(Number(req.params.id));
+  if (!email) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  return res.json(email);
 });
 
 app.get('/api/mailbox/:address/latest', auth, (req, res) => {

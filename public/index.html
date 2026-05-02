@@ -410,12 +410,14 @@ const state = {
   config: { domain: 'dart.lat', apiKeyEnabled: false },
   mailboxes: [],
   emails: [],
+  activeRequests: 0,
   selectedAddress: '',
   selectedEmail: null,
   previewMode: 'text',
   generatedAddress: '',
   durationHours: 24,
   pendingDeleteAddress: '',
+  hasLoadedShell: false,
   darkTheme: localStorage.getItem('snowmail_theme') !== 'light',
 };
 
@@ -444,6 +446,7 @@ function requestHeaders(json = false) {
 }
 
 async function apiFetch(path, options = {}) {
+  state.activeRequests += 1;
   const init = {
     ...options,
     headers: {
@@ -451,15 +454,19 @@ async function apiFetch(path, options = {}) {
       ...(options.headers || {}),
     },
   };
-  const response = await fetch(`${API}${path}`, init);
-  const contentType = response.headers.get('content-type') || '';
-  const payload = contentType.includes('application/json') ? await response.json() : await response.text();
+  try {
+    const response = await fetch(`${API}${path}`, init);
+    const contentType = response.headers.get('content-type') || '';
+    const payload = contentType.includes('application/json') ? await response.json() : await response.text();
 
-  if (!response.ok) {
-    const message = typeof payload === 'string' ? payload : payload.error || '请求失败';
-    throw new Error(message);
+    if (!response.ok) {
+      const message = typeof payload === 'string' ? payload : payload.error || '请求失败';
+      throw new Error(message);
+    }
+    return payload;
+  } finally {
+    state.activeRequests = Math.max(0, state.activeRequests - 1);
   }
-  return payload;
 }
 
 function toast(message) {
@@ -706,19 +713,39 @@ function showMail(id) {
   const mail = state.emails.find(item => item.id === id);
   if (!mail) return;
 
-  state.selectedEmail = mail;
+  state.selectedEmail = {
+    ...mail,
+    body_text: '',
+    body_html: '',
+  };
   state.previewMode = 'text';
   document.getElementById('detail-subject').textContent = mail.subject || '(无主题)';
   document.getElementById('detail-from').textContent = mail.sender || '';
   document.getElementById('detail-to').textContent = mail.recipient || '';
   document.getElementById('detail-time').textContent = formatTime(mail.received_at);
-  document.getElementById('detail-text').textContent = mail.body_text || mail.body_html || '(无内容)';
-  document.getElementById('detail-html').srcdoc = mail.body_html || '<p style="font-family: sans-serif; padding: 24px;">这封邮件没有 HTML 内容。</p>';
+  document.getElementById('detail-text').textContent = '正在加载邮件内容...';
+  document.getElementById('detail-html').srcdoc = '<p style="font-family: sans-serif; padding: 24px;">正在加载 HTML 内容...</p>';
   document.getElementById('detail-raw').textContent = '正在加载原始邮件...';
   switchPreview('text');
   document.getElementById('view-inbox').classList.remove('active');
   document.getElementById('view-detail').classList.add('active');
   switchTab('inbox');
+  fetchEmailDetail(mail.id)
+    .then(fullMail => {
+      if (!state.selectedEmail || state.selectedEmail.id !== fullMail.id) return;
+      state.selectedEmail = fullMail;
+      document.getElementById('detail-subject').textContent = fullMail.subject || '(无主题)';
+      document.getElementById('detail-from').textContent = fullMail.sender || '';
+      document.getElementById('detail-to').textContent = fullMail.recipient || '';
+      document.getElementById('detail-time').textContent = formatTime(fullMail.received_at);
+      document.getElementById('detail-text').textContent = fullMail.body_text || fullMail.body_html || '(无内容)';
+      document.getElementById('detail-html').srcdoc = fullMail.body_html || '<p style="font-family: sans-serif; padding: 24px;">这封邮件没有 HTML 内容。</p>';
+    })
+    .catch(error => {
+      if (!state.selectedEmail || state.selectedEmail.id !== mail.id) return;
+      document.getElementById('detail-text').textContent = `邮件内容加载失败：${error.message}`;
+      document.getElementById('detail-html').srcdoc = `<p style="font-family: sans-serif; padding: 24px;">邮件内容加载失败：${escapeHtml(error.message)}</p>`;
+    });
   loadRawMail(mail.id);
 }
 
@@ -744,6 +771,10 @@ async function loadRawMail(id) {
 function copyCurrentRaw() {
   const raw = document.getElementById('detail-raw').textContent;
   copyText(raw);
+}
+
+async function fetchEmailDetail(id) {
+  return apiFetch(`/api/email/${id}`);
 }
 
 async function fetchConfig() {
@@ -789,15 +820,31 @@ async function fetchEmails(address) {
   }
 }
 
-async function refreshAll() {
+async function refreshShellData({ includeConfig = false } = {}) {
   try {
-    await fetchConfig();
-    await fetchStats();
-    await fetchMailboxes();
+    const tasks = [fetchStats(), fetchMailboxes()];
+    if (includeConfig) {
+      tasks.unshift(fetchConfig());
+    }
+    await Promise.all(tasks);
+  } catch (error) {
+    toast(error.message || '刷新失败');
+  }
+}
+
+async function refreshSelectedMailbox() {
+  if (!state.selectedAddress) return;
+  try {
     await fetchEmails(state.selectedAddress);
   } catch (error) {
     toast(error.message || '刷新失败');
   }
+}
+
+async function refreshAll() {
+  await refreshShellData({ includeConfig: !state.hasLoadedShell });
+  state.hasLoadedShell = true;
+  await refreshSelectedMailbox();
 }
 
 async function selectMailbox(address) {
@@ -850,11 +897,17 @@ async function confirmDeleteMailbox() {
   }
 }
 
+async function pollData() {
+  if (state.activeRequests > 0) return;
+  await refreshShellData();
+  await refreshSelectedMailbox();
+}
+
 applyTheme();
 refreshAll();
 renderMailList();
 setInterval(() => {
-  refreshAll();
+  pollData();
 }, 10000);
 </script>
 </body>
