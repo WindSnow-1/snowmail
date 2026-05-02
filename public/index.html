@@ -8,30 +8,36 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#07111f;
-  --bg2:rgba(9,21,44,0.72);
-  --panel:rgba(13,26,52,0.62);
-  --border:rgba(143,183,255,0.18);
-  --border-soft:rgba(143,183,255,0.08);
-  --text:#e7f0fb;
-  --muted:rgba(214,229,246,0.72);
-  --soft:rgba(185,206,231,0.45);
-  --accent:rgba(101,163,255,0.18);
-  --accent-strong:#8fc0ff;
+  --bg:#070b12;
+  --bg2:rgba(11,18,30,0.86);
+  --panel:rgba(16,25,40,0.78);
+  --surface:rgba(18,29,47,0.92);
+  --border:rgba(117,151,194,0.22);
+  --border-soft:rgba(117,151,194,0.12);
+  --text:#edf5ff;
+  --muted:rgba(218,230,246,0.78);
+  --soft:rgba(173,192,217,0.52);
+  --accent:rgba(78,147,255,0.16);
+  --accent-strong:#75b8ff;
+  --button-bg:#d9ecff;
+  --button-text:#07111f;
   --danger:rgba(255,113,113,0.82);
   --success:rgba(110,213,161,0.82);
 }
 [data-theme="light"]{
   --bg:#eef3f8;
-  --bg2:rgba(255,255,255,0.78);
-  --panel:rgba(255,255,255,0.72);
-  --border:rgba(80,120,180,0.18);
-  --border-soft:rgba(80,120,180,0.08);
-  --text:#17304a;
-  --muted:rgba(35,63,95,0.76);
-  --soft:rgba(75,104,139,0.52);
-  --accent:rgba(92,137,224,0.14);
-  --accent-strong:#3d76d6;
+  --bg2:rgba(255,255,255,0.86);
+  --panel:rgba(255,255,255,0.78);
+  --surface:rgba(255,255,255,0.94);
+  --border:rgba(64,99,148,0.18);
+  --border-soft:rgba(64,99,148,0.1);
+  --text:#122237;
+  --muted:rgba(31,55,87,0.76);
+  --soft:rgba(65,89,123,0.52);
+  --accent:rgba(46,107,205,0.1);
+  --accent-strong:#286bd6;
+  --button-bg:#173a66;
+  --button-text:#f7fbff;
   --danger:rgba(219,84,84,0.88);
   --success:rgba(41,161,103,0.88);
 }
@@ -41,24 +47,33 @@ body{
   font-family:'Inter',sans-serif;
   color:var(--text);
   background:
-    radial-gradient(circle at top left, rgba(111,171,255,0.22), transparent 32%),
-    radial-gradient(circle at top right, rgba(122,240,214,0.14), transparent 26%),
-    linear-gradient(180deg, #08101b 0%, var(--bg) 100%);
+    linear-gradient(rgba(117,151,194,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(117,151,194,0.035) 1px, transparent 1px),
+    radial-gradient(circle at 18% 8%, rgba(79,145,255,0.16), transparent 30%),
+    radial-gradient(circle at 82% 18%, rgba(86,209,222,0.09), transparent 28%),
+    linear-gradient(180deg, #070b12 0%, var(--bg) 100%);
+  background-size:42px 42px,42px 42px,auto,auto,auto;
   overflow:hidden;
 }
 [data-theme="light"] body{
   background:
-    radial-gradient(circle at top left, rgba(108,153,221,0.18), transparent 35%),
-    radial-gradient(circle at top right, rgba(151,203,231,0.14), transparent 28%),
+    linear-gradient(rgba(64,99,148,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(64,99,148,0.05) 1px, transparent 1px),
+    radial-gradient(circle at 18% 8%, rgba(63,124,214,0.12), transparent 34%),
+    radial-gradient(circle at 82% 18%, rgba(80,180,196,0.09), transparent 30%),
     linear-gradient(180deg, #f6f9fc 0%, var(--bg) 100%);
+  background-size:42px 42px,42px 42px,auto,auto,auto;
 }
-#sky,#snow,#cardsnow{position:fixed;inset:0}
-#sky{z-index:0}
-#snow{z-index:1;pointer-events:none}
-#cardsnow{z-index:12;pointer-events:none}
-.snow-ground{position:fixed;left:0;right:0;bottom:0;height:28px;z-index:2;background:linear-gradient(to top, rgba(220,232,246,0.12), transparent)}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(110deg, transparent 0 36%, rgba(141,190,255,0.055) 45%, transparent 54% 100%);
+  z-index:0;
+}
 .app{position:relative;z-index:10;display:flex;gap:18px;height:100vh;max-width:1320px;margin:0 auto;padding:32px 34px}
-.glass{background:var(--bg2);border:1px solid var(--border);backdrop-filter:blur(24px) saturate(1.15);-webkit-backdrop-filter:blur(24px) saturate(1.15);box-shadow:0 18px 60px rgba(0,0,0,0.18)}
+.glass{background:var(--bg2);border:1px solid var(--border);backdrop-filter:blur(18px) saturate(1.08);-webkit-backdrop-filter:blur(18px) saturate(1.08);box-shadow:0 18px 48px rgba(0,0,0,0.18)}
 .sidebar{width:320px;min-width:320px;display:flex;flex-direction:column;gap:16px}
 .main{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}
 .card{border-radius:22px}
@@ -66,29 +81,46 @@ body{
 .logo{font-family:'Cormorant Garamond',serif;font-size:34px;letter-spacing:6px;font-weight:500}
 .logo-sub{margin-top:6px;color:var(--soft);font-size:12px;letter-spacing:3px;text-transform:uppercase}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px}
-.stat{padding:14px 8px;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid var(--border-soft)}
+.stat{padding:14px 8px;border-radius:14px;background:rgba(255,255,255,0.035);border:1px solid var(--border-soft)}
 .stat-value{font-family:'Cormorant Garamond',serif;font-size:28px}
 .stat-label{margin-top:2px;font-size:10px;letter-spacing:1.5px;color:var(--soft);text-transform:uppercase}
 .gen-card{padding:18px 20px}
 .btn-primary,.btn-secondary,.btn-danger,.chip{
   border:1px solid var(--border);
-  background:var(--accent);
+  background:rgba(255,255,255,0.045);
   color:var(--text);
-  border-radius:12px;
+  border-radius:11px;
   cursor:pointer;
-  transition:all .2s ease;
+  transition:transform .16s ease,border-color .16s ease,background .16s ease,color .16s ease,box-shadow .16s ease;
   font-family:inherit;
+  font-weight:500;
+  letter-spacing:.02em;
+  box-shadow:none;
 }
-.btn-primary:hover,.btn-secondary:hover,.btn-danger:hover,.chip:hover{transform:translateY(-1px);border-color:rgba(143,183,255,0.35)}
-.btn-primary{width:100%;padding:13px 14px;font-size:14px;font-weight:500}
-.btn-secondary{padding:9px 12px;background:transparent}
-.btn-danger{padding:9px 12px;background:rgba(255,96,96,0.1);border-color:rgba(255,96,96,0.2);color:#ffd0d0}
+.btn-primary:hover,.btn-secondary:hover,.btn-danger:hover,.chip:hover{
+  transform:translateY(-1px);
+  border-color:rgba(117,184,255,0.48);
+  background:rgba(117,184,255,0.1);
+}
+.btn-primary:active,.btn-secondary:active,.btn-danger:active,.chip:active,.icon-btn:active,.time-option:active{
+  transform:translateY(0);
+}
+.btn-primary:focus-visible,.btn-secondary:focus-visible,.btn-danger:focus-visible,.chip:focus-visible,.icon-btn:focus-visible,.search:focus-visible,.modal input:focus-visible{
+  outline:2px solid rgba(117,184,255,0.66);
+  outline-offset:3px;
+}
+.btn-primary{width:100%;padding:13px 16px;font-size:14px;background:var(--button-bg);border-color:transparent;color:var(--button-text);box-shadow:0 10px 26px rgba(24,95,184,0.18)}
+.btn-primary:hover{background:#f0f7ff;color:#07111f;box-shadow:0 12px 28px rgba(24,95,184,0.24)}
+[data-theme="light"] .btn-primary:hover{background:#0f2f56;color:#fff}
+.btn-secondary{padding:9px 12px;background:rgba(255,255,255,0.035)}
+.btn-danger{padding:9px 12px;background:rgba(255,96,96,0.08);border-color:rgba(255,96,96,0.22);color:#ffd0d0}
+button:disabled{cursor:not-allowed;opacity:.62;filter:saturate(.75)}
 .mailbox-card{flex:1;min-height:0;padding:12px}
 .section-title{padding:8px 10px 12px;color:var(--soft);font-size:11px;letter-spacing:2px;text-transform:uppercase}
 .mailbox-list{overflow-y:auto;height:100%;padding:0 4px 4px}
-.mailbox-item{display:flex;align-items:center;gap:10px;padding:12px 10px;border-radius:14px;cursor:pointer;transition:background .2s ease,border-color .2s ease;border:1px solid transparent}
-.mailbox-item:hover{background:rgba(255,255,255,0.03)}
-.mailbox-item.active{background:var(--accent);border-color:var(--border)}
+.mailbox-item{display:flex;align-items:center;gap:10px;padding:12px 10px;border-radius:13px;cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .16s ease;border:1px solid transparent}
+.mailbox-item:hover{transform:translateX(2px);background:rgba(255,255,255,0.045);border-color:var(--border-soft)}
+.mailbox-item.active{background:var(--accent);border-color:rgba(117,184,255,0.34)}
 .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .dot-alive{background:var(--success);box-shadow:0 0 10px rgba(110,213,161,0.7)}
 .dot-expiring{background:#ffc66d;box-shadow:0 0 10px rgba(255,198,109,0.65)}
@@ -98,18 +130,19 @@ body{
 .mailbox-meta{margin-top:3px;font-size:11px;color:var(--soft)}
 .mailbox-actions{display:flex;gap:6px;opacity:0;transition:opacity .2s ease}
 .mailbox-item:hover .mailbox-actions{opacity:1}
-.icon-btn{padding:5px 8px;border-radius:8px;border:1px solid var(--border-soft);background:transparent;color:var(--muted);cursor:pointer}
-.icon-btn:hover{background:rgba(255,255,255,0.05)}
+.icon-btn{padding:5px 8px;border-radius:8px;border:1px solid var(--border-soft);background:transparent;color:var(--muted);cursor:pointer;transition:background .16s ease,border-color .16s ease,color .16s ease}
+.icon-btn:hover{background:rgba(117,184,255,0.09);border-color:var(--border);color:var(--text)}
 .toolbar{display:flex;align-items:center;gap:12px;padding:16px 18px;border-radius:20px}
 .live-dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 12px rgba(110,213,161,0.7);animation:pulse 2.6s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-.search{flex:1;padding:10px 14px;border-radius:12px;border:1px solid var(--border-soft);background:rgba(0,0,0,0.12);color:var(--text);outline:none}
+.search{flex:1;padding:10px 14px;border-radius:11px;border:1px solid var(--border-soft);background:rgba(0,0,0,0.14);color:var(--text);outline:none;transition:border-color .16s ease,box-shadow .16s ease,background .16s ease}
+.search:focus{border-color:rgba(117,184,255,0.46);background:rgba(117,184,255,0.06);box-shadow:0 0 0 4px rgba(117,184,255,0.08)}
 .search::placeholder{color:var(--soft)}
 .toolbar-actions{display:flex;gap:8px}
 .panel{flex:1;min-height:0;border-radius:24px;overflow:hidden;display:flex;flex-direction:column}
 .panel-tabs{display:flex;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border-soft)}
 .chip{padding:8px 14px;background:transparent}
-.chip.active{background:var(--accent)}
+.chip.active{background:var(--accent);border-color:rgba(117,184,255,0.34);color:var(--text)}
 .content{flex:1;min-height:0;display:flex;flex-direction:column}
 .list-view,.detail-view,.api-view{flex:1;min-height:0;display:none}
 .list-view.active,.detail-view.active,.api-view.active{display:flex}
@@ -117,9 +150,9 @@ body{
 .list-scroll,.detail-scroll,.api-scroll{flex:1;overflow-y:auto;padding:18px 20px 22px}
 .empty{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--soft);padding:24px}
 .empty strong{display:block;color:var(--muted);margin-bottom:8px;font-weight:500}
-.mail-card{padding:16px;border-radius:16px;border:1px solid var(--border-soft);background:var(--panel);cursor:pointer;transition:transform .2s ease,border-color .2s ease,background .2s ease}
+.mail-card{padding:16px;border-radius:15px;border:1px solid var(--border-soft);background:var(--surface);cursor:pointer;transition:transform .16s ease,border-color .16s ease,background .16s ease}
 .mail-card + .mail-card{margin-top:8px}
-.mail-card:hover{transform:translateX(3px);border-color:var(--border);background:rgba(255,255,255,0.04)}
+.mail-card:hover{transform:translateX(3px);border-color:var(--border);background:rgba(117,184,255,0.08)}
 .mail-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
 .mail-from{font-size:14px;font-weight:600;color:var(--muted)}
 .mail-time{font-size:11px;color:var(--soft);white-space:nowrap}
@@ -137,7 +170,7 @@ body{
 .raw-box{padding:18px;border-radius:16px;background:rgba(0,0,0,0.18);border:1px solid var(--border-soft);white-space:pre-wrap;word-break:break-word;font-family:Consolas,'SFMono-Regular',monospace;font-size:12px}
 .api-view{flex-direction:column}
 .api-scroll h2{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:500}
-.api-box,.api-endpoint{margin-top:14px;padding:16px;border-radius:16px;background:var(--panel);border:1px solid var(--border-soft)}
+.api-box,.api-endpoint{margin-top:14px;padding:16px;border-radius:15px;background:var(--surface);border:1px solid var(--border-soft)}
 .api-row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .api-row code,.api-endpoint code{font-family:Consolas,'SFMono-Regular',monospace;font-size:13px}
 .api-copy{display:flex;gap:8px;flex-wrap:wrap}
@@ -147,24 +180,26 @@ body{
 .method.delete{background:rgba(255,108,108,0.16);color:#ffb0b0}
 .api-endpoint p{margin-top:8px;color:var(--soft);font-size:13px}
 .api-note{margin-top:16px;color:var(--soft);font-size:13px;line-height:1.6}
-.corner-btns{position:fixed;left:22px;bottom:22px;display:flex;gap:8px;z-index:20}
-.round-btn{width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer}
-.round-btn.off{opacity:.38}
-.toast{position:fixed;left:50%;bottom:42px;transform:translateX(-50%) translateY(18px);padding:12px 18px;border-radius:12px;background:rgba(8,18,36,0.92);border:1px solid var(--border);color:var(--text);opacity:0;pointer-events:none;transition:all .25s ease;z-index:50}
+.toast{position:fixed;left:50%;bottom:42px;transform:translateX(-50%) translateY(18px);padding:12px 18px;border-radius:12px;background:rgba(8,18,36,0.92);border:1px solid var(--border);color:var(--text);opacity:0;pointer-events:none;transition:all .25s ease;z-index:50;box-shadow:0 14px 30px rgba(0,0,0,0.2)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .modal-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,7,16,0.6);backdrop-filter:blur(8px);z-index:40}
 .modal-overlay.show{display:flex}
 .modal{width:min(440px,92vw);padding:28px;border-radius:22px}
 .modal h3{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:500}
 .modal p{margin-top:6px;color:var(--soft);font-size:13px;line-height:1.6}
-.modal input{width:100%;margin-top:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--border-soft);background:rgba(0,0,0,0.14);color:var(--text);outline:none}
-.time-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
-.time-option{padding:12px 8px;border-radius:14px;border:1px solid var(--border-soft);background:var(--panel);text-align:center;cursor:pointer}
-.time-option.selected{background:var(--accent);border-color:var(--border)}
+.modal input{width:100%;margin-top:16px;padding:12px 14px;border-radius:11px;border:1px solid var(--border-soft);background:rgba(0,0,0,0.14);color:var(--text);outline:none;transition:border-color .16s ease,box-shadow .16s ease,background .16s ease}
+.modal input:focus{border-color:rgba(117,184,255,0.46);background:rgba(117,184,255,0.06);box-shadow:0 0 0 4px rgba(117,184,255,0.08)}
+.confirm-modal{width:min(420px,92vw)}
+.confirm-address{margin-top:16px;padding:13px 14px;border-radius:12px;background:rgba(255,96,96,0.08);border:1px solid rgba(255,96,96,0.18);color:var(--text);font-family:Consolas,'SFMono-Regular',monospace;font-size:13px;word-break:break-all}
+.confirm-warning{margin-top:12px;color:var(--soft);font-size:12px;line-height:1.6}
+.time-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:16px}
+.time-option{padding:12px 8px;border-radius:12px;border:1px solid var(--border-soft);background:var(--surface);text-align:center;cursor:pointer;transition:transform .16s ease,border-color .16s ease,background .16s ease}
+.time-option:hover{transform:translateY(-1px);border-color:var(--border);background:rgba(117,184,255,0.08)}
+.time-option.selected{background:var(--accent);border-color:rgba(117,184,255,0.36)}
 .time-value{font-family:'Cormorant Garamond',serif;font-size:28px}
 .time-label{font-size:11px;color:var(--soft);margin-top:2px}
 .modal-actions{display:flex;gap:10px;margin-top:18px}
-.modal-result{display:none;margin-top:16px;padding:14px;border-radius:14px;background:var(--panel);border:1px solid var(--border-soft);align-items:center;gap:10px}
+.modal-result{display:none;margin-top:16px;padding:14px;border-radius:12px;background:var(--surface);border:1px solid var(--border-soft);align-items:center;gap:10px}
 .modal-result.show{display:flex}
 .modal-result code{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 ::-webkit-scrollbar{width:6px;height:6px}
@@ -173,21 +208,15 @@ body{
   body{overflow:auto}
   .app{height:auto;min-height:100vh;flex-direction:column;padding:20px}
   .sidebar{width:100%;min-width:0}
+  .toolbar{align-items:stretch;flex-wrap:wrap}
+  .toolbar-actions{width:100%;flex-wrap:wrap}
+  .toolbar-actions .btn-secondary{flex:1;min-width:112px}
+  .time-grid{grid-template-columns:repeat(auto-fit,minmax(72px,1fr))}
   .panel{min-height:620px}
 }
 </style>
 </head>
 <body>
-<canvas id="sky"></canvas>
-<canvas id="snow"></canvas>
-<canvas id="cardsnow"></canvas>
-<div class="snow-ground"></div>
-
-<div class="corner-btns">
-  <button class="round-btn" id="btn-snow" onclick="toggleSnow()" title="切换雪花">✦</button>
-  <button class="round-btn" id="btn-theme" onclick="toggleTheme()" title="切换主题">☼</button>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
@@ -196,6 +225,10 @@ body{
     <p>你可以输入自定义前缀，也可以留空随机生成。下面的保留时间只影响邮箱本身的有效期。</p>
     <input id="m-custom" type="text" placeholder="例如 test 或 signup-demo">
     <div class="time-grid">
+      <div class="time-option" data-hours="1" onclick="pickDuration(this)">
+        <div class="time-value">1</div>
+        <div class="time-label">小时</div>
+      </div>
       <div class="time-option" data-hours="6" onclick="pickDuration(this)">
         <div class="time-value">6</div>
         <div class="time-label">小时</div>
@@ -220,6 +253,19 @@ body{
     <div class="modal-actions">
       <button class="btn-secondary" style="flex:1" onclick="closeModal()">取消</button>
       <button class="btn-primary" id="btn-go" style="flex:1" onclick="createMailbox()">创建</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="delete-modal" onclick="if(event.target===this)closeDeleteModal()">
+  <div class="modal glass confirm-modal">
+    <h3>删除邮箱</h3>
+    <p>确认要删除这个邮箱吗？邮箱和它下面的全部邮件都会被移除。</p>
+    <div class="confirm-address" id="delete-address"></div>
+    <div class="confirm-warning">这个操作完成后不能从页面恢复，请确认地址无误。</div>
+    <div class="modal-actions">
+      <button class="btn-secondary" style="flex:1" onclick="closeDeleteModal()">取消</button>
+      <button class="btn-danger" id="btn-delete-confirm" style="flex:1" onclick="confirmDeleteMailbox()">删除邮箱</button>
     </div>
   </div>
 </div>
@@ -260,6 +306,7 @@ body{
       <div class="live-dot"></div>
       <input id="search" class="search" placeholder="搜索邮箱地址" oninput="renderMailboxes()">
       <div class="toolbar-actions">
+        <button class="btn-secondary" id="btn-theme" onclick="toggleTheme()">浅色模式</button>
         <button class="btn-secondary" onclick="refreshAll()">刷新</button>
         <button class="btn-secondary" onclick="configureApiKey()">API Key</button>
       </div>
@@ -368,7 +415,7 @@ const state = {
   previewMode: 'text',
   generatedAddress: '',
   durationHours: 24,
-  snowEnabled: true,
+  pendingDeleteAddress: '',
   darkTheme: localStorage.getItem('snowmail_theme') !== 'light',
 };
 
@@ -455,18 +502,13 @@ function fallbackCopy(value) {
 
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', state.darkTheme ? 'dark' : 'light');
-  document.getElementById('btn-theme').textContent = state.darkTheme ? '☼' : '☾';
+  document.getElementById('btn-theme').textContent = state.darkTheme ? '浅色模式' : '深色模式';
   localStorage.setItem('snowmail_theme', state.darkTheme ? 'dark' : 'light');
 }
 
 function toggleTheme() {
   state.darkTheme = !state.darkTheme;
   applyTheme();
-}
-
-function toggleSnow() {
-  state.snowEnabled = !state.snowEnabled;
-  document.getElementById('btn-snow').classList.toggle('off', !state.snowEnabled);
 }
 
 function configureApiKey() {
@@ -771,10 +813,23 @@ async function selectMailbox(address) {
   }
 }
 
-async function deleteMailbox(address) {
-  if (!confirm(`确认删除 ${address} 吗？`)) {
-    return;
-  }
+function deleteMailbox(address) {
+  state.pendingDeleteAddress = address;
+  document.getElementById('delete-address').textContent = address;
+  document.getElementById('delete-modal').classList.add('show');
+}
+
+function closeDeleteModal() {
+  document.getElementById('delete-modal').classList.remove('show');
+  state.pendingDeleteAddress = '';
+}
+
+async function confirmDeleteMailbox() {
+  const address = state.pendingDeleteAddress;
+  if (!address) return;
+  const button = document.getElementById('btn-delete-confirm');
+  button.disabled = true;
+  button.textContent = '删除中...';
   try {
     await apiFetch(`/api/mailboxes/${encodeURIComponent(address)}`, { method: 'DELETE' });
     if (state.selectedAddress === address) {
@@ -784,267 +839,23 @@ async function deleteMailbox(address) {
       renderMailList();
       backToList();
     }
+    closeDeleteModal();
     toast('邮箱已删除');
     await refreshAll();
   } catch (error) {
     toast(error.message || '删除失败');
+  } finally {
+    button.disabled = false;
+    button.textContent = '删除邮箱';
   }
 }
 
-const skyCanvas = document.getElementById('sky');
-const snowCanvas = document.getElementById('snow');
-const cardSnowCanvas = document.getElementById('cardsnow');
-const skyCtx = skyCanvas.getContext('2d');
-const snowCtx = snowCanvas.getContext('2d');
-const cardSnowCtx = cardSnowCanvas.getContext('2d');
-
-let width = 0;
-let height = 0;
-let mouseX = -999;
-let mouseY = -999;
-let velocityX = 0;
-let velocityY = 0;
-let prevMouseX = -999;
-let prevMouseY = -999;
-
-const stars = Array.from({ length: 110 }, () => ({
-  x: Math.random() * 3000,
-  y: Math.random() * 2000,
-  r: Math.random() * 1.2 + 0.2,
-  phase: Math.random() * Math.PI * 2,
-  speed: 0.003 + Math.random() * 0.008,
-  base: Math.random() * 0.35 + 0.18,
-}));
-
-const flakes = [];
-const clumps = [];
-let piles = [];
-
-function resizeCanvases() {
-  width = window.innerWidth;
-  height = window.innerHeight;
-  [skyCanvas, snowCanvas, cardSnowCanvas].forEach(canvas => {
-    canvas.width = width;
-    canvas.height = height;
-  });
-}
-
-function createFlake(initial = false) {
-  const radius = Math.random() < 0.65 ? 0.9 + Math.random() * 0.8 : 1.8 + Math.random() * 1.4;
-  return {
-    x: Math.random() * (width + 100) - 50,
-    y: initial ? Math.random() * height : -10 - Math.random() * 120,
-    r: radius,
-    vy: 0.12 + Math.random() * 0.3 + radius * 0.04,
-    vx: 0,
-    drift: (Math.random() - 0.5) * 0.28 + 0.04,
-    wobble: Math.random() * Math.PI * 2,
-    wobbleSpeed: 0.003 + Math.random() * 0.006,
-    wobbleAmp: 0.25 + Math.random() * 0.45,
-    alpha: 0.35 + Math.random() * 0.5,
-  };
-}
-
-function getPileRects() {
-  return ['panel-logo', 'panel-addr', 'panel-main']
-    .map(id => {
-      const el = document.getElementById(id);
-      if (!el) return null;
-      const rect = el.getBoundingClientRect();
-      return { x: rect.left, y: rect.top, w: rect.width };
-    })
-    .filter(Boolean);
-}
-
-function initCardSnow() {
-  piles = getPileRects().map(rect => {
-    const segments = Math.ceil(rect.w / 3);
-    const pile = [];
-    for (let i = 0; i < segments; i += 1) {
-      const baseHeight = 4 + Math.sin(i * 0.3) * 2 + Math.random() * 3;
-      pile.push({
-        x: rect.x + (i / segments) * rect.w,
-        baseY: rect.y,
-        h: baseHeight,
-        maxH: baseHeight,
-      });
-    }
-    return { rect, pile, lastDrop: Date.now() };
-  });
-}
-
-function drawSky() {
-  const gradient = state.darkTheme
-    ? skyCtx.createLinearGradient(0, 0, 0, height)
-    : skyCtx.createLinearGradient(0, 0, 0, height);
-  if (state.darkTheme) {
-    gradient.addColorStop(0, '#06101c');
-    gradient.addColorStop(0.45, '#0b1c35');
-    gradient.addColorStop(1, '#12284a');
-  } else {
-    gradient.addColorStop(0, '#f5f8fc');
-    gradient.addColorStop(0.5, '#dde8f3');
-    gradient.addColorStop(1, '#cadced');
-  }
-  skyCtx.fillStyle = gradient;
-  skyCtx.fillRect(0, 0, width, height);
-
-  if (!state.darkTheme) return;
-
-  stars.forEach(star => {
-    star.phase += star.speed;
-    const alpha = star.base + Math.sin(star.phase) * star.base * 0.6;
-    if (alpha <= 0) return;
-    skyCtx.beginPath();
-    skyCtx.arc(star.x % width, star.y % height, star.r, 0, Math.PI * 2);
-    skyCtx.fillStyle = `rgba(214,231,255,${alpha.toFixed(3)})`;
-    skyCtx.fill();
-  });
-}
-
-function drawSnow() {
-  snowCtx.clearRect(0, 0, width, height);
-  if (!state.snowEnabled) return;
-
-  const alphaScale = state.darkTheme ? 1 : 0.42;
-  flakes.forEach(flake => {
-    flake.wobble += flake.wobbleSpeed;
-    flake.y += flake.vy;
-    flake.x += flake.drift + Math.sin(flake.wobble) * flake.wobbleAmp + flake.vx;
-    flake.vx *= 0.96;
-
-    const dx = flake.x - mouseX;
-    const dy = flake.y - mouseY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 100 && dist > 0) {
-      const force = (100 - dist) / 100;
-      flake.vx += (dx / dist) * force * 1.2 + velocityX * force * 0.08;
-      flake.y += (dy / dist) * force * 0.35;
-    }
-
-    if (flake.y > height + 14 || flake.x < -80 || flake.x > width + 80) {
-      Object.assign(flake, createFlake(false));
-    }
-
-    snowCtx.beginPath();
-    snowCtx.arc(flake.x, flake.y, flake.r, 0, Math.PI * 2);
-    snowCtx.fillStyle = `rgba(255,255,255,${(flake.alpha * alphaScale).toFixed(3)})`;
-    snowCtx.fill();
-  });
-}
-
-function drawCardSnow() {
-  cardSnowCtx.clearRect(0, 0, width, height);
-  piles.forEach(group => {
-    const { rect, pile } = group;
-    if (!pile.length) return;
-
-    cardSnowCtx.save();
-    cardSnowCtx.beginPath();
-    cardSnowCtx.moveTo(rect.x - 2, rect.y + 2);
-    for (let i = 0; i < pile.length; i += 1) {
-      const current = pile[i];
-      const y = current.baseY - current.h;
-      if (i === 0) {
-        cardSnowCtx.lineTo(current.x, y);
-      } else {
-        const prev = pile[i - 1];
-        cardSnowCtx.quadraticCurveTo(
-          (prev.x + rect.w / pile.length + current.x) / 2,
-          (prev.baseY - prev.h + y) / 2 - 1,
-          current.x,
-          y
-        );
-      }
-    }
-    cardSnowCtx.lineTo(rect.x + rect.w + 2, rect.y + 2);
-    cardSnowCtx.closePath();
-    const gradient = cardSnowCtx.createLinearGradient(0, rect.y - 10, 0, rect.y + 3);
-    gradient.addColorStop(0, state.darkTheme ? 'rgba(232,242,255,0.75)' : 'rgba(255,255,255,0.92)');
-    gradient.addColorStop(1, state.darkTheme ? 'rgba(200,216,238,0.12)' : 'rgba(214,225,241,0.2)');
-    cardSnowCtx.fillStyle = gradient;
-    cardSnowCtx.fill();
-    cardSnowCtx.restore();
-
-    if (Date.now() - group.lastDrop > 2200 + Math.random() * 3600) {
-      group.lastDrop = Date.now();
-      const index = Math.floor(Math.random() * pile.length);
-      if (pile[index].h > 2) {
-        const dropSize = 1.5 + Math.random() * 2.4;
-        pile[index].h -= dropSize;
-        for (let i = 0; i < 3; i += 1) {
-          clumps.push({
-            x: pile[index].x + (Math.random() - 0.5) * 4,
-            y: pile[index].baseY - pile[index].h,
-            vy: 0.2 + Math.random() * 0.4,
-            vx: (Math.random() - 0.5) * 0.8,
-            r: dropSize * 0.5 + Math.random(),
-            life: 1,
-          });
-        }
-      }
-    }
-
-    pile.forEach(item => {
-      if (item.h < item.maxH) item.h += 0.003;
-    });
-  });
-
-  for (let i = clumps.length - 1; i >= 0; i -= 1) {
-    const item = clumps[i];
-    item.y += item.vy;
-    item.vy += 0.03;
-    item.x += item.vx;
-    item.life -= 0.01;
-    if (item.life <= 0) {
-      clumps.splice(i, 1);
-      continue;
-    }
-    cardSnowCtx.beginPath();
-    cardSnowCtx.arc(item.x, item.y, item.r, 0, Math.PI * 2);
-    cardSnowCtx.fillStyle = `rgba(226,238,255,${(item.life * 0.6).toFixed(3)})`;
-    cardSnowCtx.fill();
-  }
-}
-
-function animate() {
-  drawSky();
-  drawSnow();
-  drawCardSnow();
-  requestAnimationFrame(animate);
-}
-
-window.addEventListener('resize', () => {
-  resizeCanvases();
-  setTimeout(initCardSnow, 80);
-});
-
-window.addEventListener('mousemove', event => {
-  if (prevMouseX > -900) {
-    velocityX = event.clientX - prevMouseX;
-    velocityY = event.clientY - prevMouseY;
-  }
-  prevMouseX = mouseX = event.clientX;
-  prevMouseY = mouseY = event.clientY;
-});
-
-setInterval(() => {
-  velocityX *= 0.9;
-  velocityY *= 0.9;
-}, 50);
-
-resizeCanvases();
-for (let i = 0; i < 180; i += 1) {
-  flakes.push(createFlake(true));
-}
-setTimeout(initCardSnow, 300);
 applyTheme();
 refreshAll();
 renderMailList();
 setInterval(() => {
   refreshAll();
 }, 10000);
-animate();
 </script>
 </body>
 </html>
