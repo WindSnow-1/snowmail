@@ -15,6 +15,14 @@ const CONFIG = {
   maxMailSize: 10 * 1024 * 1024,
 };
 
+const PUBLIC_RATE_LIMITS = {
+  meta: { windowMs: 60 * 1000, max: 10 },
+  mailbox: { windowMs: 60 * 1000, max: 30 },
+  email: { windowMs: 60 * 1000, max: 60 },
+};
+
+const publicRateBuckets = new Map();
+
 const dbPath = path.join(__dirname, 'mail.db');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
@@ -56,13 +64,20 @@ const stmts = {
     WHERE LOWER(recipient) = LOWER(?)
     ORDER BY received_at DESC
   `),
+  getPublicEmails: db.prepare(`
+    SELECT id, sender, subject, received_at
+    FROM emails
+    WHERE LOWER(recipient) = LOWER(?)
+    ORDER BY received_at DESC
+    LIMIT 20
+  `),
   getEmailById: db.prepare(`
     SELECT id, recipient, sender, subject, body_text, body_html, received_at
     FROM emails
     WHERE id = ?
   `),
   getEmailByIdForRecipient: db.prepare(`
-    SELECT id, recipient, sender, subject, body_text, body_html, received_at
+    SELECT id, sender, subject, body_text, body_html, received_at
     FROM emails
     WHERE id = ? AND LOWER(recipient) = LOWER(?)
   `),
@@ -130,7 +145,7 @@ function getApiKey(req) {
 
 function auth(req, res, next) {
   if (!CONFIG.apiKey) {
-    return next();
+    return res.status(503).json({ error: 'Admin API key is not configured' });
   }
 
   const apiKey = getApiKey(req);
@@ -226,6 +241,7 @@ const smtpServer = new SMTPServer({
 });
 
 const app = express();
+app.set('trust proxy', true);
 
 function deleteMailboxData(address) {
   const normalized = address.toLowerCase();
@@ -254,6 +270,50 @@ function getPublicMailbox(address) {
   return stmts.getMailbox.get(normalized);
 }
 
+function stripHtml(value) {
+  return String(value || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getPublicEmailBody(email) {
+  const textBody = String(email?.body_text || '').trim();
+  if (textBody) {
+    return textBody;
+  }
+  return stripHtml(email?.body_html || '');
+}
+
+function getRateLimitKey(req) {
+  const forwarded = req.headers['cf-connecting-ip'] || req.ip || req.socket.remoteAddress || 'unknown';
+  return String(forwarded).split(',')[0].trim();
+}
+
+function publicRateLimit(name, options) {
+  return (req, res, next) => {
+    const now = Date.now();
+    const key = `${name}:${getRateLimitKey(req)}`;
+    const bucket = publicRateBuckets.get(key);
+
+    if (!bucket || bucket.resetAt <= now) {
+      publicRateBuckets.set(key, { count: 1, resetAt: now + options.windowMs });
+      return next();
+    }
+
+    if (bucket.count >= options.max) {
+      const retryAfter = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({ error: 'Too many requests' });
+    }
+
+    bucket.count += 1;
+    return next();
+  };
+}
+
 app.use(
   cors({
     origin: true,
@@ -266,44 +326,42 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'same-origin');
   next();
 });
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', domain: CONFIG.domain, uptime: process.uptime() });
 });
 
-app.get('/api/public/mailbox/:address/meta', (req, res) => {
+app.get('/api/public/mailbox/:address/meta', publicRateLimit('meta', PUBLIC_RATE_LIMITS.meta), (req, res) => {
   const mailbox = getPublicMailbox(req.params.address);
   if (!mailbox) {
     return res.status(404).json({ error: 'Mailbox not found' });
   }
 
-  const count = stmts.countEmails.get(mailbox.address);
   return res.json({
     address: mailbox.address,
-    expires_at: mailbox.expires_at,
-    retention_hours: mailbox.retention_hours,
-    count: Number(count?.count) || 0,
   });
 });
 
-app.get('/api/public/mailbox/:address', (req, res) => {
+app.get('/api/public/mailbox/:address', publicRateLimit('mailbox', PUBLIC_RATE_LIMITS.mailbox), (req, res) => {
   const mailbox = getPublicMailbox(req.params.address);
   if (!mailbox) {
     return res.status(404).json({ error: 'Mailbox not found' });
   }
 
-  const emails = stmts.getEmails.all(mailbox.address);
+  const emails = stmts.getPublicEmails.all(mailbox.address);
   return res.json({
     address: mailbox.address,
     count: emails.length,
-    expires_at: mailbox.expires_at,
-    retention_hours: mailbox.retention_hours,
     emails,
   });
 });
 
-app.get('/api/public/email/:id', (req, res) => {
+app.get('/api/public/email/:id', publicRateLimit('email', PUBLIC_RATE_LIMITS.email), (req, res) => {
   const mailbox = getPublicMailbox(req.query.address);
   if (!mailbox) {
     return res.status(404).json({ error: 'Mailbox not found' });
@@ -314,10 +372,16 @@ app.get('/api/public/email/:id', (req, res) => {
     return res.status(404).json({ error: 'Not found' });
   }
 
-  return res.json(email);
+  return res.json({
+    id: email.id,
+    sender: email.sender,
+    subject: email.subject,
+    received_at: email.received_at,
+    body_text: getPublicEmailBody(email),
+  });
 });
 
-app.get('/api/config', auth, (req, res) => {
+app.get('/api/config', (req, res) => {
   res.json({
     domain: CONFIG.domain,
     apiKeyEnabled: Boolean(CONFIG.apiKey),

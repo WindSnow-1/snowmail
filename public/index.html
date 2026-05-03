@@ -418,6 +418,8 @@ const state = {
   durationHours: 24,
   pendingDeleteAddress: '',
   hasLoadedShell: false,
+  apiKeyPrompted: false,
+  adminNoticeShown: false,
   darkTheme: localStorage.getItem('snowmail_theme') !== 'light',
 };
 
@@ -449,6 +451,7 @@ async function apiFetch(path, options = {}) {
   state.activeRequests += 1;
   const init = {
     ...options,
+    cache: 'no-store',
     headers: {
       ...requestHeaders(false),
       ...(options.headers || {}),
@@ -527,12 +530,54 @@ function configureApiKey() {
   const trimmed = next.trim();
   if (trimmed) {
     localStorage.setItem(STORAGE_KEY, trimmed);
+    state.apiKeyPrompted = false;
     toast('API Key 已保存');
   } else {
     localStorage.removeItem(STORAGE_KEY);
+    state.apiKeyPrompted = false;
     toast('API Key 已清除');
   }
   refreshAll();
+}
+
+function ensureAdminAccess() {
+  if (!state.config.apiKeyEnabled) {
+    if (!state.adminNoticeShown) {
+      state.adminNoticeShown = true;
+      toast('管理员后台未配置 API_KEY');
+    }
+    return false;
+  }
+
+  if (!getStoredApiKey()) {
+    if (!state.apiKeyPrompted) {
+      state.apiKeyPrompted = true;
+      configureApiKey();
+    }
+    return false;
+  }
+
+  state.apiKeyPrompted = false;
+  return true;
+}
+
+function handleAdminError(error) {
+  const message = error?.message || '请求失败';
+  if (message.includes('Invalid API key')) {
+    localStorage.removeItem(STORAGE_KEY);
+    state.apiKeyPrompted = false;
+    toast('API Key 无效，请重新输入');
+    configureApiKey();
+    return true;
+  }
+
+  if (message.includes('Admin API key is not configured')) {
+    state.adminNoticeShown = false;
+    ensureAdminAccess();
+    return true;
+  }
+
+  return false;
 }
 
 function switchTab(tab) {
@@ -782,7 +827,7 @@ async function fetchConfig() {
     const config = await apiFetch('/api/config');
     state.config = config;
   } catch (error) {
-    state.config = { domain: 'dart.lat', apiKeyEnabled: Boolean(getStoredApiKey()) };
+    state.config = { domain: 'dart.lat', apiKeyEnabled: false };
   }
   document.getElementById('domain-label').textContent = state.config.domain || 'dart.lat';
   document.title = `SnowMail · ${state.config.domain || 'dart.lat'}`;
@@ -828,6 +873,7 @@ async function refreshShellData({ includeConfig = false } = {}) {
     }
     await Promise.all(tasks);
   } catch (error) {
+    if (handleAdminError(error)) return;
     toast(error.message || '刷新失败');
   }
 }
@@ -837,13 +883,20 @@ async function refreshSelectedMailbox() {
   try {
     await fetchEmails(state.selectedAddress);
   } catch (error) {
+    if (handleAdminError(error)) return;
     toast(error.message || '刷新失败');
   }
 }
 
 async function refreshAll() {
-  await refreshShellData({ includeConfig: !state.hasLoadedShell });
-  state.hasLoadedShell = true;
+  if (!state.hasLoadedShell) {
+    await fetchConfig();
+    state.hasLoadedShell = true;
+  }
+  if (!ensureAdminAccess()) {
+    return;
+  }
+  await refreshShellData();
   await refreshSelectedMailbox();
 }
 
@@ -856,6 +909,7 @@ async function selectMailbox(address) {
     document.getElementById('view-detail').classList.remove('active');
     document.getElementById('view-inbox').classList.add('active');
   } catch (error) {
+    if (handleAdminError(error)) return;
     toast(error.message || '加载邮件失败');
   }
 }
@@ -890,6 +944,7 @@ async function confirmDeleteMailbox() {
     toast('邮箱已删除');
     await refreshAll();
   } catch (error) {
+    if (handleAdminError(error)) return;
     toast(error.message || '删除失败');
   } finally {
     button.disabled = false;
