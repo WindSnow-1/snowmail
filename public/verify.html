@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>验证邮箱</title>
+<style>
+:root{
+  --bg:#08101b;
+  --panel:#101b2c;
+  --surface:#13233a;
+  --border:rgba(128,166,214,.18);
+  --text:#edf5ff;
+  --muted:rgba(222,233,246,.68);
+  --accent:#7fc0ff;
+  --button:#d7ebff;
+  --button-text:#0b1523;
+  --danger:#ffb0b0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  min-height:100vh;
+  font-family:"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(93,144,255,.18), transparent 28%),
+    radial-gradient(circle at top right, rgba(91,212,220,.1), transparent 24%),
+    linear-gradient(180deg, #07101a 0%, #0b1523 100%);
+  display:grid;
+  place-items:center;
+  padding:24px;
+}
+.card{
+  width:min(520px,100%);
+  background:rgba(14,23,37,.9);
+  border:1px solid var(--border);
+  border-radius:24px;
+  padding:30px;
+  box-shadow:0 24px 60px rgba(0,0,0,.28);
+}
+h1{
+  font-size:34px;
+  letter-spacing:.06em;
+}
+p{
+  margin-top:12px;
+  color:var(--muted);
+  line-height:1.7;
+}
+form{
+  margin-top:22px;
+}
+label{
+  display:block;
+  margin-bottom:10px;
+  font-size:13px;
+  color:var(--muted);
+}
+input{
+  width:100%;
+  padding:14px 16px;
+  border-radius:14px;
+  border:1px solid var(--border);
+  background:#0b1422;
+  color:var(--text);
+  font-size:15px;
+  outline:none;
+}
+input:focus{
+  border-color:rgba(127,192,255,.55);
+  box-shadow:0 0 0 4px rgba(127,192,255,.1);
+}
+button{
+  width:100%;
+  margin-top:14px;
+  padding:14px 16px;
+  border:none;
+  border-radius:14px;
+  cursor:pointer;
+  font-size:15px;
+  font-weight:600;
+  color:var(--button-text);
+  background:var(--button);
+}
+button:disabled{
+  opacity:.66;
+  cursor:not-allowed;
+}
+.note{
+  margin-top:16px;
+  font-size:13px;
+  color:var(--muted);
+}
+.error{
+  display:none;
+  margin-top:14px;
+  padding:12px 14px;
+  border-radius:14px;
+  color:var(--danger);
+  background:rgba(255,96,96,.08);
+  border:1px solid rgba(255,96,96,.16);
+}
+.error.show{
+  display:block;
+}
+</style>
+</head>
+<body>
+  <main class="card">
+    <h1>验证邮箱</h1>
+    <p>输入一个已经存在的邮箱地址，进入这个邮箱的收件页面。</p>
+    <form id="verify-form">
+      <label for="address">邮箱地址</label>
+      <input id="address" name="address" type="text" placeholder="请输入邮箱地址" autocomplete="off">
+      <button id="submit" type="submit">进入邮箱</button>
+      <div class="error" id="error"></div>
+    </form>
+  </main>
+
+<script>
+const form = document.getElementById('verify-form');
+const input = document.getElementById('address');
+const errorBox = document.getElementById('error');
+const submitButton = document.getElementById('submit');
+
+function showError(message) {
+  errorBox.textContent = message;
+  errorBox.classList.add('show');
+}
+
+function clearError() {
+  errorBox.textContent = '';
+  errorBox.classList.remove('show');
+}
+
+function normalizeAddress(value) {
+  return String(value || '').trim().replace(/\s+/g, '').toLowerCase();
+}
+
+form.addEventListener('submit', async event => {
+  event.preventDefault();
+  clearError();
+  const address = normalizeAddress(input.value);
+
+  if (!address || !address.includes('@')) {
+    showError('请输入完整邮箱地址。');
+    return;
+  }
+
+  submitButton.disabled = true;
+  submitButton.textContent = '正在验证...';
+
+  try {
+    const response = await fetch(`/api/public/mailbox/${encodeURIComponent(address)}/meta`, { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || '这个邮箱不存在。');
+    }
+    window.location.href = `/mailbox.html?address=${encodeURIComponent(data.address)}`;
+  } catch (error) {
+    showError(error.message || '验证失败，请稍后再试。');
+    submitButton.disabled = false;
+    submitButton.textContent = '进入邮箱';
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>邮箱收件</title>
+<style>
+:root{
+  --bg:#08101b;
+  --panel:#101b2c;
+  --surface:#13233a;
+  --surface-soft:#0d1727;
+  --border:rgba(128,166,214,.18);
+  --text:#edf5ff;
+  --muted:rgba(222,233,246,.68);
+  --accent:#7fc0ff;
+  --success:#7fe0b1;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  min-height:100vh;
+  font-family:"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(93,144,255,.18), transparent 28%),
+    radial-gradient(circle at top right, rgba(91,212,220,.1), transparent 24%),
+    linear-gradient(180deg, #07101a 0%, #0b1523 100%);
+}
+.shell{
+  max-width:1320px;
+  margin:0 auto;
+  padding:26px;
+  display:grid;
+  grid-template-columns:340px 1fr;
+  gap:18px;
+  min-height:100vh;
+}
+.card{
+  background:rgba(14,23,37,.9);
+  border:1px solid var(--border);
+  border-radius:24px;
+  box-shadow:0 24px 60px rgba(0,0,0,.22);
+}
+.sidebar{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.hero{
+  padding:24px;
+}
+.hero-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+.hero h1{
+  font-size:32px;
+  letter-spacing:.04em;
+}
+.hero p{
+  margin-top:10px;
+  color:var(--muted);
+  line-height:1.7;
+  word-break:break-all;
+}
+.meta{
+  margin-top:18px;
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+.metric{
+  padding:14px;
+  border-radius:16px;
+  background:rgba(255,255,255,.03);
+  border:1px solid var(--border);
+}
+.metric strong{
+  display:block;
+  font-size:24px;
+}
+.metric span{
+  display:block;
+  margin-top:6px;
+  color:var(--muted);
+  font-size:12px;
+}
+.list-card{
+  min-height:0;
+  padding:12px;
+}
+.list-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 8px 14px;
+}
+.list-head h2{
+  font-size:15px;
+}
+.list-head button,.back-link{
+  border:none;
+  border-radius:12px;
+  padding:10px 12px;
+  background:#d7ebff;
+  color:#0b1523;
+  cursor:pointer;
+  text-decoration:none;
+  font-size:13px;
+  font-weight:600;
+  white-space:nowrap;
+}
+.mail-list{
+  max-height:calc(100vh - 290px);
+  overflow:auto;
+  padding:0 4px 4px;
+}
+.mail-item{
+  width:100%;
+  text-align:left;
+  padding:14px;
+  border-radius:16px;
+  border:1px solid transparent;
+  background:transparent;
+  color:var(--text);
+  cursor:pointer;
+}
+.mail-item:hover,.mail-item.active{
+  background:rgba(127,192,255,.08);
+  border-color:var(--border);
+}
+.mail-item + .mail-item{
+  margin-top:8px;
+}
+.mail-from{
+  font-size:14px;
+  font-weight:600;
+}
+.mail-subject{
+  margin-top:7px;
+  font-size:13px;
+}
+.mail-time{
+  margin-top:7px;
+  color:var(--muted);
+  font-size:12px;
+}
+.viewer{
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+.viewer-head{
+  padding:22px 24px;
+  border-bottom:1px solid var(--border);
+}
+.viewer-head h2{
+  font-size:28px;
+  line-height:1.4;
+}
+.viewer-meta{
+  margin-top:12px;
+  color:var(--muted);
+  display:flex;
+  gap:18px;
+  flex-wrap:wrap;
+  font-size:13px;
+}
+.viewer-body{
+  flex:1;
+  overflow:auto;
+  padding:24px;
+  line-height:1.8;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+.empty{
+  height:100%;
+  display:grid;
+  place-items:center;
+  text-align:center;
+  color:var(--muted);
+  padding:30px;
+}
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin-top:12px;
+  color:var(--muted);
+  font-size:12px;
+  opacity:.82;
+}
+.dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:rgba(127,224,177,.72);
+}
+@media (max-width: 960px){
+  .shell{
+    grid-template-columns:1fr;
+    min-height:auto;
+  }
+  .mail-list{
+    max-height:420px;
+  }
+  .viewer{
+    min-height:560px;
+  }
+}
+</style>
+</head>
+<body>
+  <main class="shell">
+    <aside class="sidebar">
+      <section class="card hero">
+        <div class="hero-head">
+          <h1>邮箱收件</h1>
+          <a class="back-link" href="/verify.html">重新输入邮箱</a>
+        </div>
+        <p id="mailbox-address">-</p>
+        <div class="badge"><span class="dot"></span>只显示这个邮箱的收件</div>
+        <div class="meta">
+          <div class="metric">
+            <strong id="mail-count">0</strong>
+            <span>邮件数量</span>
+          </div>
+          <div class="metric">
+            <strong id="mail-refresh">10s</strong>
+            <span>自动刷新</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card list-card">
+        <div class="list-head">
+          <h2>收件列表</h2>
+          <button id="refresh-btn" type="button">刷新</button>
+        </div>
+        <div class="mail-list" id="mail-list"></div>
+      </section>
+    </aside>
+
+    <section class="card viewer">
+      <div class="viewer-head">
+        <h2 id="detail-subject">选择一封邮件</h2>
+        <div class="viewer-meta">
+          <span id="detail-from">-</span>
+          <span id="detail-time">-</span>
+        </div>
+      </div>
+      <div class="viewer-body" id="detail-body">
+        <div class="empty">输入的邮箱通过验证后，这里只显示这个邮箱的收件内容。</div>
+      </div>
+    </section>
+  </main>
+
+<script>
+const state = {
+  address: '',
+  emails: [],
+  selectedId: 0,
+  activeRequests: 0,
+};
+
+function formatTime(value) {
+  if (!value) return '-';
+  return new Date(`${value}Z`).toLocaleString('zh-CN', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function escapeHtml(value) {
+  const div = document.createElement('div');
+  div.textContent = value || '';
+  return div.innerHTML;
+}
+
+async function requestJson(url) {
+  state.activeRequests += 1;
+  try {
+    const response = await fetch(url, { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || '请求失败');
+    }
+    return data;
+  } finally {
+    state.activeRequests = Math.max(0, state.activeRequests - 1);
+  }
+}
+
+function renderList() {
+  const root = document.getElementById('mail-list');
+  if (!state.emails.length) {
+    root.innerHTML = '<div class="empty">这个邮箱暂时还没有收到邮件。</div>';
+    return;
+  }
+
+  root.innerHTML = state.emails.map(mail => `
+    <button class="mail-item${state.selectedId === mail.id ? ' active' : ''}" type="button" data-id="${mail.id}">
+      <div class="mail-from">${escapeHtml(mail.sender)}</div>
+      <div class="mail-subject">${escapeHtml(mail.subject || '(无主题)')}</div>
+      <div class="mail-time">${formatTime(mail.received_at)}</div>
+    </button>
+  `).join('');
+
+  root.querySelectorAll('.mail-item').forEach(button => {
+    button.addEventListener('click', () => openMail(Number(button.dataset.id)));
+  });
+}
+
+function setEmptyDetail(message) {
+  document.getElementById('detail-subject').textContent = '选择一封邮件';
+  document.getElementById('detail-from').textContent = '-';
+  document.getElementById('detail-time').textContent = '-';
+  document.getElementById('detail-body').innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
+}
+
+async function openMail(id) {
+  const item = state.emails.find(mail => mail.id === id);
+  if (!item) return;
+
+  state.selectedId = id;
+  renderList();
+  document.getElementById('detail-subject').textContent = item.subject || '(无主题)';
+  document.getElementById('detail-from').textContent = item.sender || '-';
+  document.getElementById('detail-time').textContent = formatTime(item.received_at);
+  document.getElementById('detail-body').innerHTML = '<div class="empty">正在加载邮件内容...</div>';
+
+  try {
+    const detail = await requestJson(`/api/public/email/${id}?address=${encodeURIComponent(state.address)}`);
+    document.getElementById('detail-subject').textContent = detail.subject || '(无主题)';
+    document.getElementById('detail-from').textContent = detail.sender || '-';
+    document.getElementById('detail-time').textContent = formatTime(detail.received_at);
+    document.getElementById('detail-body').textContent = detail.body_text || detail.body_html || '(无内容)';
+  } catch (error) {
+    document.getElementById('detail-body').innerHTML = `<div class="empty">${escapeHtml(error.message || '加载失败')}</div>`;
+  }
+}
+
+async function refreshMailbox() {
+  const data = await requestJson(`/api/public/mailbox/${encodeURIComponent(state.address)}`);
+  state.emails = data.emails || [];
+  document.getElementById('mailbox-address').textContent = data.address || state.address;
+  document.getElementById('mail-count').textContent = String(data.count || 0);
+  renderList();
+
+  if (!state.emails.length) {
+    setEmptyDetail('这个邮箱暂时还没有收到邮件。');
+    state.selectedId = 0;
+    return;
+  }
+
+  const currentExists = state.selectedId && state.emails.some(mail => mail.id === state.selectedId);
+  if (!currentExists) {
+    await openMail(state.emails[0].id);
+  }
+}
+
+async function boot() {
+  const params = new URLSearchParams(location.search);
+  state.address = String(params.get('address') || '').trim().toLowerCase();
+  if (!state.address || !state.address.includes('@')) {
+    location.href = '/verify.html';
+    return;
+  }
+
+  try {
+    await refreshMailbox();
+  } catch (error) {
+    document.getElementById('mailbox-address').textContent = state.address;
+    setEmptyDetail(error.message || '这个邮箱不存在，或者暂时无法访问。');
+  }
+}
+
+document.getElementById('refresh-btn').addEventListener('click', () => {
+  refreshMailbox().catch(error => setEmptyDetail(error.message || '刷新失败'));
+});
+
+setInterval(() => {
+  if (!state.address || state.activeRequests > 0) return;
+  refreshMailbox().catch(() => {});
+}, 10000);
+
+boot();
+</script>
+</body>
+</html>

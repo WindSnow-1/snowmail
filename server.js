@@ -61,6 +61,11 @@ const stmts = {
     FROM emails
     WHERE id = ?
   `),
+  getEmailByIdForRecipient: db.prepare(`
+    SELECT id, recipient, sender, subject, body_text, body_html, received_at
+    FROM emails
+    WHERE id = ? AND LOWER(recipient) = LOWER(?)
+  `),
   getLatest: db.prepare(`
     SELECT id, recipient, sender, subject, body_text, body_html, received_at
     FROM emails
@@ -234,6 +239,21 @@ function deleteMailboxData(address) {
   };
 }
 
+function normalizeMailboxAddress(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, '')
+    .toLowerCase();
+}
+
+function getPublicMailbox(address) {
+  const normalized = normalizeMailboxAddress(address);
+  if (!normalized) {
+    return null;
+  }
+  return stmts.getMailbox.get(normalized);
+}
+
 app.use(
   cors({
     origin: true,
@@ -250,6 +270,51 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', domain: CONFIG.domain, uptime: process.uptime() });
+});
+
+app.get('/api/public/mailbox/:address/meta', (req, res) => {
+  const mailbox = getPublicMailbox(req.params.address);
+  if (!mailbox) {
+    return res.status(404).json({ error: 'Mailbox not found' });
+  }
+
+  const count = stmts.countEmails.get(mailbox.address);
+  return res.json({
+    address: mailbox.address,
+    expires_at: mailbox.expires_at,
+    retention_hours: mailbox.retention_hours,
+    count: Number(count?.count) || 0,
+  });
+});
+
+app.get('/api/public/mailbox/:address', (req, res) => {
+  const mailbox = getPublicMailbox(req.params.address);
+  if (!mailbox) {
+    return res.status(404).json({ error: 'Mailbox not found' });
+  }
+
+  const emails = stmts.getEmails.all(mailbox.address);
+  return res.json({
+    address: mailbox.address,
+    count: emails.length,
+    expires_at: mailbox.expires_at,
+    retention_hours: mailbox.retention_hours,
+    emails,
+  });
+});
+
+app.get('/api/public/email/:id', (req, res) => {
+  const mailbox = getPublicMailbox(req.query.address);
+  if (!mailbox) {
+    return res.status(404).json({ error: 'Mailbox not found' });
+  }
+
+  const email = stmts.getEmailByIdForRecipient.get(Number(req.params.id), mailbox.address);
+  if (!email) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
+  return res.json(email);
 });
 
 app.get('/api/config', auth, (req, res) => {
