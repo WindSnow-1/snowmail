@@ -72,8 +72,83 @@ body::before{
   background:linear-gradient(110deg, transparent 0 36%, rgba(141,190,255,0.055) 45%, transparent 54% 100%);
   z-index:0;
 }
+body.locked .app{
+  display:none;
+}
 .app{position:relative;z-index:10;display:flex;gap:18px;height:100vh;max-width:1320px;margin:0 auto;padding:32px 34px}
 .glass{background:var(--bg2);border:1px solid var(--border);backdrop-filter:blur(18px) saturate(1.08);-webkit-backdrop-filter:blur(18px) saturate(1.08);box-shadow:0 18px 48px rgba(0,0,0,0.18)}
+.admin-auth{
+  position:fixed;
+  inset:0;
+  z-index:70;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  background:rgba(5,10,18,0.74);
+  backdrop-filter:blur(10px);
+}
+body.locked .admin-auth{
+  display:flex;
+}
+.admin-auth-card{
+  width:min(440px,92vw);
+  padding:30px;
+  border-radius:24px;
+}
+.admin-auth-logo{
+  font-family:'Cormorant Garamond',serif;
+  font-size:34px;
+  letter-spacing:6px;
+  font-weight:500;
+}
+.admin-auth-card h2{
+  margin-top:12px;
+  font-size:28px;
+  font-family:'Cormorant Garamond',serif;
+  font-weight:500;
+}
+.admin-auth-card p{
+  margin-top:8px;
+  color:var(--soft);
+  line-height:1.7;
+  font-size:13px;
+}
+.admin-auth-card input{
+  width:100%;
+  margin-top:18px;
+  padding:13px 14px;
+  border-radius:12px;
+  border:1px solid var(--border-soft);
+  background:rgba(0,0,0,0.14);
+  color:var(--text);
+  outline:none;
+}
+.admin-auth-card input:focus{
+  border-color:rgba(117,184,255,0.46);
+  box-shadow:0 0 0 4px rgba(117,184,255,0.08);
+}
+.admin-auth-error{
+  display:none;
+  margin-top:14px;
+  padding:11px 13px;
+  border-radius:12px;
+  background:rgba(255,96,96,0.08);
+  border:1px solid rgba(255,96,96,0.18);
+  color:#ffd0d0;
+  font-size:13px;
+}
+.admin-auth-error.show{
+  display:block;
+}
+.admin-auth-actions{
+  display:flex;
+  gap:10px;
+  margin-top:16px;
+}
+.admin-auth-actions .btn-primary{
+  width:100%;
+}
 .sidebar{width:320px;min-width:320px;display:flex;flex-direction:column;gap:16px}
 .main{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}
 .card{border-radius:22px}
@@ -216,8 +291,21 @@ button:disabled{cursor:not-allowed;opacity:.62;filter:saturate(.75)}
 }
 </style>
 </head>
-<body>
+<body class="locked">
 <div class="toast" id="toast"></div>
+
+<div class="admin-auth">
+  <div class="admin-auth-card glass">
+    <div class="admin-auth-logo">SNOWMAIL</div>
+    <h2>管理员验证</h2>
+    <p id="admin-auth-text">请输入管理员 API Key 后继续。</p>
+    <input id="admin-key-input" type="password" placeholder="请输入管理员 API Key" autocomplete="current-password">
+    <div class="admin-auth-error" id="admin-auth-error"></div>
+    <div class="admin-auth-actions">
+      <button class="btn-primary" id="admin-key-submit" onclick="submitAdminKey()">进入后台</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
   <div class="modal glass">
@@ -420,6 +508,7 @@ const state = {
   hasLoadedShell: false,
   apiKeyPrompted: false,
   adminNoticeShown: false,
+  adminValidated: false,
   darkTheme: localStorage.getItem('snowmail_theme') !== 'light',
 };
 
@@ -530,44 +619,153 @@ function configureApiKey() {
   const trimmed = next.trim();
   if (trimmed) {
     localStorage.setItem(STORAGE_KEY, trimmed);
+    state.adminValidated = false;
     state.apiKeyPrompted = false;
     toast('API Key 已保存');
   } else {
     localStorage.removeItem(STORAGE_KEY);
+    state.adminValidated = false;
     state.apiKeyPrompted = false;
     toast('API Key 已清除');
   }
   refreshAll();
 }
 
-function ensureAdminAccess() {
+function setApiTabVisibility(visible) {
+  const tab = document.getElementById('tab-api');
+  tab.hidden = !visible;
+  tab.style.display = visible ? '' : 'none';
+  if (!visible) {
+    tab.classList.remove('active');
+    document.getElementById('view-api').classList.remove('active');
+  }
+}
+
+function setAdminLocked(locked) {
+  document.body.classList.toggle('locked', locked);
+}
+
+function showAdminAuthError(message) {
+  const el = document.getElementById('admin-auth-error');
+  el.textContent = message || '';
+  el.classList.toggle('show', Boolean(message));
+}
+
+function setAdminAuthText(message) {
+  document.getElementById('admin-auth-text').textContent = message;
+}
+
+function focusAdminKeyInput() {
+  setTimeout(() => {
+    const input = document.getElementById('admin-key-input');
+    if (input && !input.disabled) {
+      input.focus();
+      input.select();
+    }
+  }, 20);
+}
+
+function openAdminGate(message, errorMessage = '') {
+  setAdminLocked(true);
+  setApiTabVisibility(false);
+  setAdminAuthText(message || '请输入管理员 API Key 后继续。');
+  showAdminAuthError(errorMessage);
+  const input = document.getElementById('admin-key-input');
+  const button = document.getElementById('admin-key-submit');
+  input.disabled = false;
+  button.disabled = false;
+  button.textContent = '进入后台';
+  focusAdminKeyInput();
+}
+
+function closeAdminGate() {
+  showAdminAuthError('');
+  setAdminLocked(false);
+  setApiTabVisibility(true);
+}
+
+async function validateAdminKey() {
+  await apiFetch('/api/stats');
+}
+
+async function submitAdminKey() {
+  const input = document.getElementById('admin-key-input');
+  const button = document.getElementById('admin-key-submit');
+  const key = input.value.trim();
+
+  if (!key) {
+    showAdminAuthError('请输入管理员 API Key。');
+    focusAdminKeyInput();
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = '验证中...';
+  showAdminAuthError('');
+  localStorage.setItem(STORAGE_KEY, key);
+
+  try {
+    await validateAdminKey();
+    state.adminValidated = true;
+    state.apiKeyPrompted = false;
+    closeAdminGate();
+    input.value = '';
+    await refreshAll();
+  } catch (error) {
+    localStorage.removeItem(STORAGE_KEY);
+    state.adminValidated = false;
+    button.disabled = false;
+    button.textContent = '进入后台';
+    showAdminAuthError('API Key 不正确，请重新输入。');
+    focusAdminKeyInput();
+  }
+}
+
+async function ensureAdminAccess() {
   if (!state.config.apiKeyEnabled) {
+    state.adminValidated = false;
     if (!state.adminNoticeShown) {
       state.adminNoticeShown = true;
       toast('管理员后台未配置 API_KEY');
     }
+    openAdminGate('管理员后台当前不可用，服务器还没有配置 API_KEY。');
+    document.getElementById('admin-key-input').disabled = true;
+    document.getElementById('admin-key-submit').disabled = true;
+    document.getElementById('admin-key-submit').textContent = '管理员未配置';
     return false;
   }
 
   if (!getStoredApiKey()) {
-    if (!state.apiKeyPrompted) {
-      state.apiKeyPrompted = true;
-      configureApiKey();
-    }
+    state.adminValidated = false;
+    openAdminGate('请输入管理员 API Key 后继续。');
     return false;
   }
 
-  state.apiKeyPrompted = false;
-  return true;
+  if (state.adminValidated) {
+    closeAdminGate();
+    return true;
+  }
+
+  try {
+    await validateAdminKey();
+    state.adminValidated = true;
+    closeAdminGate();
+    return true;
+  } catch (error) {
+    localStorage.removeItem(STORAGE_KEY);
+    state.adminValidated = false;
+    openAdminGate('请输入管理员 API Key 后继续。', 'API Key 无效，请重新输入。');
+    return false;
+  }
 }
 
 function handleAdminError(error) {
   const message = error?.message || '请求失败';
   if (message.includes('Invalid API key')) {
     localStorage.removeItem(STORAGE_KEY);
+    state.adminValidated = false;
     state.apiKeyPrompted = false;
-    toast('API Key 无效，请重新输入');
-    configureApiKey();
+    openAdminGate('请输入管理员 API Key 后继续。', 'API Key 无效，请重新输入。');
     return true;
   }
 
@@ -581,6 +779,10 @@ function handleAdminError(error) {
 }
 
 function switchTab(tab) {
+  if (tab === 'api' && !state.adminValidated) {
+    openAdminGate('请输入管理员 API Key 后继续。');
+    return;
+  }
   document.getElementById('tab-inbox').classList.toggle('active', tab === 'inbox');
   document.getElementById('tab-api').classList.toggle('active', tab === 'api');
   document.getElementById('view-inbox').classList.toggle('active', tab === 'inbox' && !state.selectedEmail);
@@ -893,7 +1095,7 @@ async function refreshAll() {
     await fetchConfig();
     state.hasLoadedShell = true;
   }
-  if (!ensureAdminAccess()) {
+  if (!(await ensureAdminAccess())) {
     return;
   }
   await refreshShellData();
@@ -953,12 +1155,13 @@ async function confirmDeleteMailbox() {
 }
 
 async function pollData() {
-  if (state.activeRequests > 0) return;
+  if (state.activeRequests > 0 || !state.adminValidated) return;
   await refreshShellData();
   await refreshSelectedMailbox();
 }
 
 applyTheme();
+setApiTabVisibility(false);
 refreshAll();
 renderMailList();
 setInterval(() => {
