@@ -290,6 +290,76 @@ function isAllowedMailboxAddress(address) {
   return Boolean(getAllowedDomain(getDomainFromAddress(address)));
 }
 
+const HUMAN_FIRST_NAMES = [
+  'alex', 'amy', 'ben', 'cora', 'dylan', 'ella', 'eric', 'evan',
+  'felix', 'hugo', 'iris', 'jane', 'jay', 'kevin', 'kira', 'leo',
+  'lily', 'lucas', 'luna', 'mason', 'mia', 'mika', 'nina', 'noah',
+  'nora', 'owen', 'ray', 'riley', 'ruby', 'sara', 'sean', 'tony', 'vera', 'zoe',
+];
+
+const HUMAN_LAST_NAMES = [
+  'chen', 'feng', 'gao', 'han', 'he', 'huang', 'li', 'lin', 'liu',
+  'lu', 'shen', 'song', 'sun', 'tang', 'wang', 'wu', 'xie', 'xu',
+  'yang', 'ye', 'zhao', 'zhou',
+];
+
+const HUMAN_TAGS = ['box', 'cloud', 'desk', 'hello', 'home', 'inbox', 'lab', 'mail', 'note', 'work'];
+
+function pickRandom(items) {
+  return items[crypto.randomInt(0, items.length)];
+}
+
+function sanitizeLocalPart(value) {
+  return String(value || '')
+    .trim()
+    .replace(/@.*$/, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '')
+    .replace(/^[._-]+|[._-]+$/g, '')
+    .toLowerCase();
+}
+
+function buildHumanLocalPart() {
+  const first = pickRandom(HUMAN_FIRST_NAMES);
+  const last = pickRandom(HUMAN_LAST_NAMES);
+  const tag = pickRandom(HUMAN_TAGS);
+  const twoDigits = crypto.randomInt(10, 100);
+  const threeDigits = crypto.randomInt(100, 1000);
+
+  switch (crypto.randomInt(0, 6)) {
+    case 0:
+      return `${first}.${last}`;
+    case 1:
+      return `${first}${twoDigits}`;
+    case 2:
+      return `${first}.${last}${twoDigits}`;
+    case 3:
+      return `${first}_${tag}`;
+    case 4:
+      return `${first}${last}${threeDigits}`;
+    default:
+      return `${first}.${tag}`;
+  }
+}
+
+function buildPrefixedLocalPart(prefix) {
+  const safePrefix = sanitizeLocalPart(prefix) || 'mail';
+  return `${safePrefix}-${crypto.randomInt(1000, 10000)}`;
+}
+
+function createUniqueAddress(selectedDomain, prefix) {
+  const hasPrefix = Boolean(String(prefix || '').trim());
+
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const localPart = hasPrefix ? buildPrefixedLocalPart(prefix) : buildHumanLocalPart();
+    const address = `${localPart}@${selectedDomain}`.toLowerCase();
+    if (!stmts.getMailbox.get(address)) {
+      return address;
+    }
+  }
+
+  return `mail-${crypto.randomBytes(4).toString('hex')}@${selectedDomain}`.toLowerCase();
+}
+
 const smtpServer = new SMTPServer({
   authOptional: true,
   secure: false,
@@ -578,11 +648,7 @@ app.post('/api/generate', auth, (req, res) => {
   let address;
 
   if (custom && custom.trim()) {
-    const name = custom
-      .trim()
-      .replace(/@.*$/, '')
-      .replace(/[^a-zA-Z0-9._-]/g, '')
-      .toLowerCase();
+    const name = sanitizeLocalPart(custom);
 
     if (!name || name.length < 2) {
       return res.status(400).json({ error: 'Invalid address name (min 2 chars)' });
@@ -594,9 +660,7 @@ app.post('/api/generate', auth, (req, res) => {
       return res.status(409).json({ error: 'Address already exists', address });
     }
   } else {
-    const prefixValue = prefix || 'snow';
-    const rand = Math.random().toString(36).substring(2, 8);
-    address = `${prefixValue}-${rand}@${selectedDomain}`;
+    address = createUniqueAddress(selectedDomain, prefix);
   }
 
   let expiresAt = null;
@@ -622,9 +686,7 @@ app.get('/api/generate', auth, (req, res) => {
   if (!selectedDomain) {
     return res.status(400).json({ error: 'Domain is not allowed' });
   }
-  const prefixValue = req.query.prefix || 'snow';
-  const rand = Math.random().toString(36).substring(2, 8);
-  const address = `${prefixValue}-${rand}@${selectedDomain}`;
+  const address = createUniqueAddress(selectedDomain, req.query.prefix);
   const exp = new Date(Date.now() + 24 * 3600000).toISOString().replace('T', ' ').substring(0, 19);
   stmts.createMailbox.run(address.toLowerCase(), '', 24, exp);
   res.json({ address });
