@@ -4,6 +4,7 @@ const { SMTPServer } = require('smtp-server');
 const { simpleParser } = require('mailparser');
 const Database = require('better-sqlite3');
 const path = require('path');
+const crypto = require('crypto');
 
 const CONFIG = {
   domain: process.env.MAIL_DOMAIN || 'dart.lat',
@@ -22,6 +23,11 @@ const PUBLIC_RATE_LIMITS = {
 };
 
 const publicRateBuckets = new Map();
+const adminSessions = new Map();
+const ADMIN_SESSION_COOKIE = 'snowmail_admin_session';
+const ADMIN_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const publicDir = path.join(__dirname, 'public');
+const privateDir = path.join(__dirname, 'private');
 
 const dbPath = path.join(__dirname, 'mail.db');
 const db = new Database(dbPath);
@@ -143,12 +149,102 @@ function getApiKey(req) {
   return req.headers['x-api-key'] || req.query.key || '';
 }
 
+function getCookieValue(req, name) {
+  const raw = req.headers.cookie || '';
+  if (!raw) {
+    return '';
+  }
+
+  for (const chunk of raw.split(';')) {
+    const [key, ...rest] = chunk.trim().split('=');
+    if (key === name) {
+      return decodeURIComponent(rest.join('='));
+    }
+  }
+
+  return '';
+}
+
+function isSecureRequest(req) {
+  if (req.secure) {
+    return true;
+  }
+
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
+
+  return forwardedProto === 'https';
+}
+
+function cleanupAdminSessions() {
+  const now = Date.now();
+  for (const [token, session] of adminSessions.entries()) {
+    if (!session || session.expiresAt <= now) {
+      adminSessions.delete(token);
+    }
+  }
+}
+
+function hasValidAdminSession(req) {
+  cleanupAdminSessions();
+  const token = getCookieValue(req, ADMIN_SESSION_COOKIE);
+  if (!token) {
+    return false;
+  }
+
+  const session = adminSessions.get(token);
+  if (!session || session.expiresAt <= Date.now()) {
+    adminSessions.delete(token);
+    return false;
+  }
+
+  session.expiresAt = Date.now() + ADMIN_SESSION_TTL_MS;
+  return true;
+}
+
+function setAdminSession(req, res) {
+  const token = crypto.randomBytes(24).toString('hex');
+  adminSessions.set(token, {
+    expiresAt: Date.now() + ADMIN_SESSION_TTL_MS,
+  });
+  res.cookie(ADMIN_SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isSecureRequest(req),
+    path: '/',
+    maxAge: ADMIN_SESSION_TTL_MS,
+  });
+}
+
+function clearAdminSession(req, res) {
+  const token = getCookieValue(req, ADMIN_SESSION_COOKIE);
+  if (token) {
+    adminSessions.delete(token);
+  }
+  res.clearCookie(ADMIN_SESSION_COOKIE, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isSecureRequest(req),
+    path: '/',
+  });
+}
+
 function auth(req, res, next) {
   if (!CONFIG.apiKey) {
     return res.status(503).json({ error: 'Admin API key is not configured' });
   }
 
+  if (hasValidAdminSession(req)) {
+    return next();
+  }
+
   const apiKey = getApiKey(req);
+  if (!apiKey) {
+    return res.status(401).json({ error: 'Admin login required' });
+  }
+
   if (apiKey !== CONFIG.apiKey) {
     return res.status(401).json({ error: 'Invalid API key' });
   }
@@ -330,7 +426,44 @@ app.use('/api', (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   next();
 });
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(publicDir, { index: false }));
+
+app.get('/', (req, res) => {
+  if (hasValidAdminSession(req)) {
+    return res.redirect('/admin');
+  }
+  return res.sendFile(path.join(publicDir, 'index.html'));
+});
+
+app.get('/admin', (req, res) => {
+  if (!hasValidAdminSession(req)) {
+    return res.redirect('/');
+  }
+  return res.sendFile(path.join(privateDir, 'admin.html'));
+});
+
+app.post('/api/admin/login', (req, res) => {
+  if (!CONFIG.apiKey) {
+    return res.status(503).json({ error: 'Admin API key is not configured' });
+  }
+
+  const password = String(req.body?.password || '');
+  if (!password) {
+    return res.status(400).json({ error: 'Password is required' });
+  }
+
+  if (password !== CONFIG.apiKey) {
+    return res.status(401).json({ error: 'Invalid password' });
+  }
+
+  setAdminSession(req, res);
+  return res.json({ success: true });
+});
+
+app.post('/api/admin/logout', (req, res) => {
+  clearAdminSession(req, res);
+  return res.json({ success: true });
+});
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', domain: CONFIG.domain, uptime: process.uptime() });
@@ -563,6 +696,7 @@ app.listen(CONFIG.apiPort, '0.0.0.0', () => {
 });
 
 setInterval(cleanup, CONFIG.cleanupInterval * 60000);
+setInterval(cleanupAdminSessions, 10 * 60 * 1000);
 cleanup();
 
 process.on('SIGINT', () => {
