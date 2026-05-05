@@ -6,8 +6,28 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const crypto = require('crypto');
 
+function normalizeDomain(domain) {
+  return String(domain || '')
+    .trim()
+    .replace(/^@+/, '')
+    .toLowerCase();
+}
+
+function parseMailDomains() {
+  const raw = process.env.MAIL_DOMAINS || process.env.MAIL_DOMAIN || 'dart.lat';
+  const domains = raw
+    .split(',')
+    .map(normalizeDomain)
+    .filter(Boolean);
+  const defaultDomain = normalizeDomain(process.env.DEFAULT_MAIL_DOMAIN) || domains[0] || 'dart.lat';
+  return [...new Set([defaultDomain, ...domains])];
+}
+
+const MAIL_DOMAINS = parseMailDomains();
+
 const CONFIG = {
-  domain: process.env.MAIL_DOMAIN || 'dart.lat',
+  domain: MAIL_DOMAINS[0],
+  domains: MAIL_DOMAINS,
   smtpPort: parseInt(process.env.SMTP_PORT || '25', 10),
   apiPort: parseInt(process.env.API_PORT || '8080', 10),
   retentionHours: parseInt(process.env.RETENTION_HOURS || '48', 10),
@@ -252,6 +272,24 @@ function auth(req, res, next) {
   return next();
 }
 
+function getAllowedDomain(domain) {
+  const normalized = normalizeDomain(domain);
+  return CONFIG.domains.find(item => item === normalized) || '';
+}
+
+function getDomainFromAddress(address) {
+  const value = String(address || '').trim().toLowerCase();
+  const at = value.lastIndexOf('@');
+  if (at === -1) {
+    return '';
+  }
+  return normalizeDomain(value.slice(at + 1));
+}
+
+function isAllowedMailboxAddress(address) {
+  return Boolean(getAllowedDomain(getDomainFromAddress(address)));
+}
+
 const smtpServer = new SMTPServer({
   authOptional: true,
   secure: false,
@@ -266,7 +304,7 @@ const smtpServer = new SMTPServer({
   },
   onRcptTo(addr, session, cb) {
     const address = addr.address.toLowerCase();
-    if (address.endsWith(`@${CONFIG.domain}`) || address.includes(CONFIG.domain)) {
+    if (isAllowedMailboxAddress(address)) {
       return cb();
     }
     return cb(new Error(`Rejected: ${address}`));
@@ -314,6 +352,9 @@ const smtpServer = new SMTPServer({
         const subject = parsed.subject || '(no subject)';
 
         for (const recipient of recipients) {
+          if (!isAllowedMailboxAddress(recipient)) {
+            continue;
+          }
           stmts.insertEmail.run(
             recipient.toLowerCase(),
             sender,
@@ -466,7 +507,11 @@ app.post('/api/admin/logout', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', domain: CONFIG.domain, uptime: process.uptime() });
+  res.json({
+    status: 'ok',
+    domain: CONFIG.domain,
+    uptime: process.uptime(),
+  });
 });
 
 app.get('/api/public/mailbox/:address/meta', publicRateLimit('meta', PUBLIC_RATE_LIMITS.meta), (req, res) => {
@@ -514,15 +559,21 @@ app.get('/api/public/email/:id', publicRateLimit('email', PUBLIC_RATE_LIMITS.ema
   });
 });
 
-app.get('/api/config', (req, res) => {
+app.get('/api/config', auth, (req, res) => {
   res.json({
     domain: CONFIG.domain,
+    domains: CONFIG.domains,
     apiKeyEnabled: Boolean(CONFIG.apiKey),
   });
 });
 
 app.post('/api/generate', auth, (req, res) => {
-  const { prefix, custom, retention_hours } = req.body || {};
+  const { prefix, custom, domain, retention_hours } = req.body || {};
+  const requestedDomain = normalizeDomain(domain);
+  const selectedDomain = requestedDomain ? getAllowedDomain(requestedDomain) : CONFIG.domain;
+  if (!selectedDomain) {
+    return res.status(400).json({ error: 'Domain is not allowed' });
+  }
   const hours = retention_hours ?? 24;
   let address;
 
@@ -537,7 +588,7 @@ app.post('/api/generate', auth, (req, res) => {
       return res.status(400).json({ error: 'Invalid address name (min 2 chars)' });
     }
 
-    address = `${name}@${CONFIG.domain}`;
+    address = `${name}@${selectedDomain}`;
     const existing = stmts.getMailbox.get(address);
     if (existing) {
       return res.status(409).json({ error: 'Address already exists', address });
@@ -545,7 +596,7 @@ app.post('/api/generate', auth, (req, res) => {
   } else {
     const prefixValue = prefix || 'snow';
     const rand = Math.random().toString(36).substring(2, 8);
-    address = `${prefixValue}-${rand}@${CONFIG.domain}`;
+    address = `${prefixValue}-${rand}@${selectedDomain}`;
   }
 
   let expiresAt = null;
@@ -566,9 +617,14 @@ app.post('/api/generate', auth, (req, res) => {
 });
 
 app.get('/api/generate', auth, (req, res) => {
+  const requestedDomain = normalizeDomain(req.query.domain);
+  const selectedDomain = requestedDomain ? getAllowedDomain(requestedDomain) : CONFIG.domain;
+  if (!selectedDomain) {
+    return res.status(400).json({ error: 'Domain is not allowed' });
+  }
   const prefixValue = req.query.prefix || 'snow';
   const rand = Math.random().toString(36).substring(2, 8);
-  const address = `${prefixValue}-${rand}@${CONFIG.domain}`;
+  const address = `${prefixValue}-${rand}@${selectedDomain}`;
   const exp = new Date(Date.now() + 24 * 3600000).toISOString().replace('T', ' ').substring(0, 19);
   stmts.createMailbox.run(address.toLowerCase(), '', 24, exp);
   res.json({ address });
@@ -681,7 +737,7 @@ function cleanup() {
 
 smtpServer.listen(CONFIG.smtpPort, '0.0.0.0', () => {
   console.log('');
-  console.log(`SnowMail ${CONFIG.domain}`);
+  console.log(`SnowMail ${CONFIG.domains.join(', ')}`);
   console.log(`SMTP :${CONFIG.smtpPort}  API :${CONFIG.apiPort}`);
   console.log(`API key: ${CONFIG.apiKey ? 'enabled' : 'disabled'}`);
   console.log('');

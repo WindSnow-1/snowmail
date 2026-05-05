@@ -68,6 +68,16 @@ body::before{
 .stat-value{font-family:"Georgia",serif;font-size:28px}
 .stat-label{margin-top:2px;font-size:10px;letter-spacing:1.5px;color:var(--soft);text-transform:uppercase}
 .gen-card{padding:18px 20px}
+.domain-card{padding:12px}
+.domain-select{
+  width:100%;
+  padding:11px 12px;
+  border-radius:11px;
+  border:1px solid rgba(117,151,194,0.12);
+  background:rgba(0,0,0,0.14);
+  color:var(--text);
+  outline:none;
+}
 .section-title{padding:8px 10px 12px;color:var(--soft);font-size:11px;letter-spacing:2px;text-transform:uppercase}
 .mailbox-card{flex:1;min-height:0;padding:12px;display:flex;flex-direction:column;overflow:hidden}
 .mailbox-list{flex:1;min-height:0;overflow-y:auto;padding:0 4px 10px}
@@ -267,6 +277,11 @@ body::before{
       <button class="btn-primary" onclick="openCreateModal()">新建邮箱</button>
     </section>
 
+    <section class="glass card domain-card">
+      <div class="section-title">域名列表</div>
+      <select id="domain-select" class="domain-select" onchange="selectDomain(this.value)"></select>
+    </section>
+
     <section class="glass card mailbox-card">
       <div class="section-title">地址列表</div>
       <div class="mailbox-list" id="mailbox-list"></div>
@@ -339,7 +354,7 @@ body::before{
             <div class="api-endpoint">
               <span class="method post">POST</span>
               <code>/api/generate</code>
-              <p>创建邮箱，例如 <code>{"custom":"test","retention_hours":24}</code></p>
+              <p>创建邮箱，例如 <code>{"custom":"test","domain":"dart.lat","retention_hours":24}</code></p>
             </div>
             <div class="api-endpoint">
               <span class="method get">GET</span>
@@ -376,10 +391,11 @@ body::before{
 <script>
 const API = location.origin;
 const state = {
-  config: { domain: 'dart.lat' },
+  config: { domain: 'dart.lat', domains: ['dart.lat'] },
   mailboxes: [],
   emails: [],
   activeRequests: 0,
+  selectedDomain: 'dart.lat',
   selectedAddress: '',
   selectedEmail: null,
   previewMode: 'text',
@@ -439,6 +455,46 @@ function escapeHtml(value) {
   const div = document.createElement('div');
   div.textContent = value || '';
   return div.innerHTML;
+}
+
+function getMailboxDomain(address) {
+  const value = String(address || '').toLowerCase();
+  const at = value.lastIndexOf('@');
+  return at === -1 ? '' : value.slice(at + 1);
+}
+
+function getKnownDomains() {
+  const configured = Array.isArray(state.config.domains) ? state.config.domains : [];
+  const fromMailboxes = state.mailboxes.map(item => getMailboxDomain(item.address)).filter(Boolean);
+  return [...new Set([...configured, ...fromMailboxes].map(item => String(item).toLowerCase()).filter(Boolean))];
+}
+
+function renderDomainOptions() {
+  const select = document.getElementById('domain-select');
+  if (!select) return;
+
+  const domains = getKnownDomains();
+  if (!domains.includes(state.selectedDomain)) {
+    state.selectedDomain = domains[0] || state.config.domain || 'dart.lat';
+  }
+
+  select.innerHTML = domains
+    .map(domain => `<option value="${escapeHtml(domain)}"${domain === state.selectedDomain ? ' selected' : ''}>${escapeHtml(domain)}</option>`)
+    .join('');
+  document.getElementById('domain-label').textContent = state.selectedDomain || state.config.domain || 'dart.lat';
+}
+
+function selectDomain(domain) {
+  state.selectedDomain = String(domain || '').toLowerCase();
+  if (state.selectedAddress && getMailboxDomain(state.selectedAddress) !== state.selectedDomain) {
+    state.selectedAddress = '';
+    state.selectedEmail = null;
+    state.emails = [];
+    backToList();
+    renderMailList();
+  }
+  renderDomainOptions();
+  renderMailboxes();
 }
 
 function copyText(value) {
@@ -547,6 +603,7 @@ async function createMailbox() {
       headers: requestHeaders(true),
       body: JSON.stringify({
         custom: custom || undefined,
+        domain: state.selectedDomain,
         retention_hours: state.durationHours,
       }),
     });
@@ -593,9 +650,10 @@ function getMailboxExpiry(expiresAt) {
 function renderMailboxes() {
   const search = document.getElementById('search').value.trim().toLowerCase();
   const root = document.getElementById('mailbox-list');
+  const domainItems = state.mailboxes.filter(item => getMailboxDomain(item.address) === state.selectedDomain);
   const items = search
-    ? state.mailboxes.filter(item => item.address.toLowerCase().includes(search))
-    : state.mailboxes;
+    ? domainItems.filter(item => item.address.toLowerCase().includes(search))
+    : domainItems;
 
   if (!items.length) {
     root.innerHTML = `
@@ -730,8 +788,14 @@ function showMail(id) {
 async function fetchConfig() {
   const config = await apiFetch('/api/config');
   state.config = config;
-  document.getElementById('domain-label').textContent = config.domain || 'dart.lat';
-  document.title = `SnowMail · ${config.domain || 'dart.lat'}`;
+  state.config.domains = Array.isArray(config.domains) && config.domains.length
+    ? config.domains
+    : [config.domain || 'dart.lat'];
+  if (!state.selectedDomain || !state.config.domains.includes(state.selectedDomain)) {
+    state.selectedDomain = config.domain || state.config.domains[0] || 'dart.lat';
+  }
+  renderDomainOptions();
+  document.title = `SnowMail · ${state.selectedDomain || config.domain || 'dart.lat'}`;
 }
 
 async function fetchStats() {
@@ -744,6 +808,7 @@ async function fetchStats() {
 async function fetchMailboxes() {
   const data = await apiFetch('/api/mailboxes');
   state.mailboxes = data.mailboxes || [];
+  renderDomainOptions();
   renderMailboxes();
 }
 
