@@ -1,18 +1,58 @@
+<div align="center">
+
 # SnowMail
 
-SnowMail is a lightweight catch-all temporary mailbox service. It receives mail for one or more domains, stores messages in SQLite, and provides a web admin panel plus a small public mailbox viewer for sharing a single mailbox.
+**A lightweight catch-all mailbox server for temporary inboxes, multi-domain testing, and shareable single-mailbox pages.**
 
-## Features
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-233047?style=for-the-badge&logo=node.js&logoColor=8ee29b)](#requirements)
+[![SQLite](https://img.shields.io/badge/SQLite-WAL-233047?style=for-the-badge&logo=sqlite&logoColor=9ecbff)](#backup-and-restore)
+[![Express](https://img.shields.io/badge/Express-API-233047?style=for-the-badge&logo=express&logoColor=ffffff)](#api)
+[![SMTP](https://img.shields.io/badge/SMTP-Catch--All-233047?style=for-the-badge)](#dns-setup)
 
-- Catch-all SMTP receiver for configured domains
-- Multi-domain mailbox creation
-- Admin login with server-side session cookie
-- API key protection for admin APIs
-- Public mailbox pages for one-address sharing
-- SQLite storage with WAL mode
-- Mailbox expiration options, including permanent mailboxes
-- Basic public API rate limiting
-- Simple dark web UI
+</div>
+
+---
+
+SnowMail receives email for one or more domains, stores messages in a local SQLite database, and gives you two ways to read them:
+
+- A protected admin dashboard for managing all mailboxes.
+- A public single-mailbox page for sharing one inbox without exposing the full admin panel.
+
+It is intentionally small: one Node.js server, one SQLite database, static HTML pages, and normal DNS records.
+
+## At A Glance
+
+| Area | What SnowMail Provides |
+| --- | --- |
+| Mail receiving | Catch-all SMTP receiver for every configured domain |
+| Domains | Multi-domain mailbox creation and domain picker |
+| Storage | Local SQLite database with WAL mode |
+| Admin | Password login, server-side session cookie, protected APIs |
+| Sharing | Public `verify.html` and `mailbox.html` for one mailbox |
+| Automation | API key support for scripts and external tools |
+| Cleanup | Expiring mailboxes plus permanent mailbox option |
+
+## How It Works
+
+```text
+Sender
+  |
+  | email to user@example.com
+  v
+DNS MX record
+  |
+  | points to mx.example.com
+  v
+SnowMail SMTP :25
+  |
+  | parses and stores message
+  v
+SQLite mail.db
+  |
+  +--> Admin dashboard
+  +--> Public single-mailbox page
+  +--> API / automation scripts
+```
 
 ## Project Structure
 
@@ -25,28 +65,25 @@ private/admin.html   Admin dashboard, served only after login
 mail.db              Runtime database, created on the server
 ```
 
-`mail.db` is not part of the repository. It is the important runtime data file that contains created mailboxes and received emails.
+`mail.db` is not committed to Git. It is the runtime database that contains created mailboxes and received emails.
 
 ## Requirements
 
 - Node.js 18+
 - A server with port `25` open for SMTP
-- A domain managed in DNS
-- Optional but recommended: Nginx reverse proxy for the web UI
+- At least one domain you can configure with DNS
+- Optional but recommended: Nginx in front of the web UI
 
-Install dependencies:
+Install and start:
 
 ```bash
 npm install
-```
-
-Start locally:
-
-```bash
 npm start
 ```
 
-## Environment Variables
+## Configuration
+
+SnowMail is configured with environment variables.
 
 | Variable | Default | Description |
 | --- | --- | --- |
@@ -62,15 +99,17 @@ npm start
 Example:
 
 ```bash
-MAIL_DOMAINS=dart.lat,example.com,example.net \
-DEFAULT_MAIL_DOMAIN=dart.lat \
+MAIL_DOMAINS=example.com,example.net \
+DEFAULT_MAIL_DOMAIN=example.com \
 API_KEY=change-this-password \
 npm start
 ```
 
-## Deployment With systemd
+## Production Setup
 
-Example service file:
+### systemd
+
+Create `/etc/systemd/system/snowmail.service`:
 
 ```ini
 [Unit]
@@ -84,9 +123,9 @@ WorkingDirectory=/opt/mail-server
 ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=5
-Environment=MAIL_DOMAIN=dart.lat
-Environment=MAIL_DOMAINS=dart.lat,example.com,example.net
-Environment=DEFAULT_MAIL_DOMAIN=dart.lat
+Environment=MAIL_DOMAIN=example.com
+Environment=MAIL_DOMAINS=example.com,example.net
+Environment=DEFAULT_MAIL_DOMAIN=example.com
 Environment=SMTP_PORT=25
 Environment=API_PORT=8080
 Environment=RETENTION_HOURS=48
@@ -96,7 +135,7 @@ Environment=API_KEY=change-this-password
 WantedBy=multi-user.target
 ```
 
-Reload and start:
+Start the service:
 
 ```bash
 systemctl daemon-reload
@@ -105,9 +144,9 @@ systemctl restart snowmail
 systemctl status snowmail --no-pager
 ```
 
-## Nginx Reverse Proxy
+### Nginx
 
-Example site config for the web UI:
+Example reverse proxy for the web UI:
 
 ```nginx
 server {
@@ -127,11 +166,11 @@ server {
 
 ## DNS Setup
 
-For every domain that should receive email, create two DNS records:
+For each domain that should receive mail, add two records:
 
 ```text
-A    mx    SERVER_IP      DNS only
-MX   @     mx.example.com Priority 10
+A    mx    SERVER_IP        DNS only
+MX   @     mx.example.com   Priority 10
 ```
 
 Example for `example.com`:
@@ -141,49 +180,27 @@ A    mx    192.0.2.10       DNS only
 MX   @     mx.example.com   Priority 10
 ```
 
-Important:
+Keep these rules in mind:
 
-- The `mx` A record must be DNS only, not proxied.
-- The web UI record, such as `mail.example.com`, can be proxied if it points to Nginx.
+- The `mx` A record must be DNS only. Do not proxy it.
+- The web UI record, such as `mail.example.com`, may be proxied through Cloudflare or another CDN.
 - MX records point to hostnames, not directly to IP addresses.
+- If the server IP changes, update A records. MX records usually do not need to change.
 
-## Admin UI
+## Web Pages
 
-Open the web UI:
-
-```text
-https://mail.example.com/
-```
-
-If `API_KEY` is configured, the first page is an admin login page. After login, the dashboard is available at:
-
-```text
-/admin
-```
-
-The admin dashboard can:
-
-- Create mailboxes
-- Select mailbox domain
-- View all mailboxes
-- View received emails
-- Delete mailboxes and emails
-- Show API endpoint examples
-
-## Public Sharing Pages
-
-SnowMail includes public pages for sharing access to one mailbox without showing the full admin dashboard.
-
-```text
-/verify.html
-/mailbox.html?address=user@example.com
-```
+| Page | Purpose |
+| --- | --- |
+| `/` | Admin login page |
+| `/admin` | Protected admin dashboard |
+| `/verify.html` | Public page where a user enters a mailbox address |
+| `/mailbox.html?address=user@example.com` | Public inbox for one mailbox |
 
 The public pages only use `/api/public/*` endpoints and return limited mailbox data.
 
 ## API
 
-Admin endpoints require either a logged-in admin session cookie or an API key:
+Admin endpoints require either an admin session cookie or an API key:
 
 ```text
 x-api-key: your-api-key
@@ -201,9 +218,9 @@ POST   /api/generate
 GET    /api/mailboxes
 GET    /api/mailbox/:address
 GET    /api/email/:id
+GET    /api/mailbox/:address/wait?timeout=30
 DELETE /api/mailboxes/:address
 DELETE /api/email/:id
-GET    /api/mailbox/:address/wait?timeout=30
 ```
 
 Create a mailbox:
@@ -215,7 +232,7 @@ curl -X POST https://mail.example.com/api/generate \
   -d '{"domain":"example.com","retention_hours":24}'
 ```
 
-Create a custom mailbox:
+Create a permanent custom mailbox:
 
 ```bash
 curl -X POST https://mail.example.com/api/generate \
@@ -232,7 +249,7 @@ The most important file is:
 /opt/mail-server/mail.db
 ```
 
-When using SQLite WAL mode, also keep these files if they exist:
+When SQLite WAL files exist, keep them too:
 
 ```text
 /opt/mail-server/mail.db-wal
@@ -247,15 +264,15 @@ mkdir -p backups
 cp -a mail.db mail.db-wal mail.db-shm backups/ 2>/dev/null || true
 ```
 
-If a server IP changes, update DNS A records from the old IP to the new IP. The database does not need to change.
+If `mail.db` survives, created mailboxes and old emails survive. If `mail.db` is lost, old emails are lost, but the domains can still receive new mail after DNS and SnowMail are configured again.
 
-## Security Notes
+## Security Checklist
 
-- Always set `API_KEY` on a public server.
-- Do not commit `mail.db` or real API keys to Git.
-- Keep SMTP port `25` open only if you intend to receive email.
-- Public mailbox pages are not private authentication. Anyone who knows an existing mailbox address can view that mailbox through the public page.
-- Use HTTPS for the web UI when possible.
+- Set `API_KEY` before exposing the service.
+- Do not commit `mail.db`, real API keys, or private server IPs.
+- Keep SMTP port `25` open only when you intend to receive email.
+- Use HTTPS for the web UI.
+- Remember that public mailbox pages are address-based access, not full authentication. Anyone who knows an existing mailbox address can view that mailbox through the public page.
 
 ## License
 
