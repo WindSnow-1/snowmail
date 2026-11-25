@@ -84,7 +84,7 @@ async function fixture(t) {
     });
     const text = await response.text();
     let data; try { data = JSON.parse(text); } catch { data = text; }
-    return { status: response.status, data, cookie: response.headers.get('set-cookie')?.split(';')[0] };
+    return { status: response.status, data, headers: response.headers, cookie: response.headers.get('set-cookie')?.split(';')[0] };
   }
   return { request, adminKey, folder, restart: async () => { await stop(); await start(); } };
 }
@@ -216,7 +216,20 @@ test('real server enforces operator scope through API keys and browser sessions'
     }
   });
 
-  await t.test('rejects URL query key, blocks cross-origin cookie CSRF, sets CSP headers, and throttles brute-force guesses', async () => {
+  await t.test('rejects URL query key, blocks cross-origin cookie CSRF, sets CSP/HSTS headers, hides Express fingerprint, and throttles brute-force guesses', async () => {
+    const plainHealth = await request('/api/health');
+    assert.equal(plainHealth.status, 200);
+    assert.equal(plainHealth.headers.get('x-powered-by'), null);
+    assert.equal(plainHealth.headers.get('strict-transport-security'), null);
+
+    const httpsHealth = await request('/api/health', {
+      headers: { 'X-Forwarded-Proto': 'https' },
+    });
+    assert.equal(httpsHealth.status, 200);
+    assert.equal(httpsHealth.headers.get('x-powered-by'), null);
+    assert.equal(httpsHealth.headers.get('strict-transport-security'), 'max-age=31536000');
+    assert.ok(httpsHealth.headers.get('content-security-policy')?.includes("default-src 'self'"));
+
     // URL ?key= must not authenticate
     assert.equal((await request(`/api/config?key=${encodeURIComponent(adminKey)}`)).status, 401);
 

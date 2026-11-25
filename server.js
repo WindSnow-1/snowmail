@@ -217,12 +217,22 @@ function isSecureRequest(req) {
     return true;
   }
 
-  const forwardedProto = String(req.headers['x-forwarded-proto'] || '')
-    .split(',')[0]
-    .trim()
-    .toLowerCase();
+  if (isLoopbackAddress(req.socket?.remoteAddress)) {
+    const forwardedProto = String(req.headers['x-forwarded-proto'] || '')
+      .split(',')[0]
+      .trim()
+      .toLowerCase();
+    if (forwardedProto === 'https') {
+      return true;
+    }
 
-  return forwardedProto === 'https';
+    const cfVisitor = String(req.headers['cf-visitor'] || '').toLowerCase();
+    if (cfVisitor.includes('"https"')) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function cleanupRateMap(map, now) {
@@ -534,6 +544,7 @@ const smtpServer = new SMTPServer({
 });
 
 const app = express();
+app.disable('x-powered-by');
 const rawTrustProxy = String(process.env.TRUST_PROXY || 'loopback').trim();
 app.set(
   'trust proxy',
@@ -634,6 +645,9 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'same-origin');
+  if (isSecureRequest(req)) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000');
+  }
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self'; frame-src 'self' about: blob: data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
