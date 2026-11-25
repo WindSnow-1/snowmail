@@ -722,7 +722,6 @@ app.delete('/api/admin/access-passwords/:id', adminOnly, (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    domain: defaultDomain(),
     uptime: process.uptime(),
   });
 });
