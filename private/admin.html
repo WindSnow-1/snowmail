@@ -1672,7 +1672,7 @@ body.mode1-glass {
     <!-- Mobile Sub-Toolbar for Keys / API / Logout -->
     <div class="mob-keys-bar">
       <div class="seg-bar">
-        <button class="seg-item active" id="mob-sub-pw" type="button" data-admin-only hidden onclick="switchTab('passwords')">AI 密码</button>
+        <button class="seg-item active" id="mob-sub-pw" type="button" data-admin-only hidden onclick="switchTab('passwords')">密钥管理</button>
         <button class="seg-item" id="mob-sub-api" type="button" onclick="switchTab('api')">API 指南</button>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
@@ -1869,6 +1869,46 @@ body.mode1-glass {
                   <button id="access-dismiss" class="btn-secondary" type="button" style="min-height:36px;padding:0 14px;font-size:12.5px;">已保存，关闭</button>
                 </div>
               </section>
+            </div>
+
+            <div class="passwords-card master-pw-card" id="master-pw-card">
+              <div class="master-pw-head">
+                <div>
+                  <span class="cobalt-tag">Master Admin Key</span>
+                  <div class="master-pw-title-row">
+                    <h3>主管理员密码</h3>
+                    <span class="pw-badge-active" id="master-pw-badge">环境变量密钥</span>
+                  </div>
+                </div>
+                <button id="master-pw-toggle" class="btn-secondary" type="button" aria-expanded="false" style="min-height:34px;padding:0 13px;font-size:12.5px;">修改主密码</button>
+              </div>
+              <p class="passwords-help" id="master-pw-meta">当前使用服务器环境变量配置的初始密钥，可随时在此更换为新的主密码。</p>
+
+              <form id="master-pw-form" class="passwords-form master-pw-form" hidden>
+                <div class="master-pw-field">
+                  <label for="master-current">当前主密码</label>
+                  <input id="master-current" class="input-21" type="password" autocomplete="current-password" required placeholder="输入当前正在使用的主管理员密码">
+                </div>
+                <div class="master-pw-pair">
+                  <div class="master-pw-field">
+                    <label for="master-new">新主密码（至少 8 位）</label>
+                    <input id="master-new" class="input-21" type="password" minlength="8" maxlength="256" autocomplete="new-password" required placeholder="至少 8 个字符">
+                  </div>
+                  <div class="master-pw-field">
+                    <label for="master-confirm">确认新主密码</label>
+                    <input id="master-confirm" class="input-21" type="password" minlength="8" maxlength="256" autocomplete="new-password" required placeholder="再次输入新主密码">
+                  </div>
+                </div>
+                <div class="passwords-permissions master-pw-rescue">
+                  防锁死兜底：新密码仅以加盐哈希保存在本地数据库，修改后其他设备的旧管理员登录会立即下线。若日后忘记密码，在服务器目录执行 <code>npm run reset-password</code> 即可免重启一键恢复初始环境变量密码，所有邮箱与邮件数据完好保留。
+                </div>
+                <div class="passwords-actions">
+                  <button id="master-pw-submit" class="btn-primary" type="submit" style="min-height:36px;padding:0 16px;font-size:13px;">保存新主密码</button>
+                  <button id="master-pw-cancel" class="btn-secondary" type="button" style="min-height:36px;padding:0 14px;font-size:12.5px;">收起</button>
+                </div>
+              </form>
+
+              <p id="master-pw-notice" class="passwords-notice" role="status" aria-live="polite"></p>
             </div>
           </div>
 

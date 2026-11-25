@@ -368,6 +368,8 @@ test('malformed API responses fail explicitly instead of saving empty bodies or 
 test('backend and all inline frontend scripts parse; wait compares timestamps, not date strings', () => {
   const vm = require('node:vm');
   new vm.Script(fs.readFileSync(path.join(__dirname, '..', 'public/amelu-admin.js'), 'utf8'));
+  new vm.Script(fs.readFileSync(path.join(__dirname, '..', 'public/access-passwords.js'), 'utf8'));
+  new vm.Script(fs.readFileSync(path.join(__dirname, '..', 'public/snowmail-ui.js'), 'utf8'));
   for (const file of ['private/admin.html','public/index.html','public/mailbox.html','public/verify.html']) {
     const html = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
     for (const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) new vm.Script(match[1], { filename:file });

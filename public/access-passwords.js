@@ -2,16 +2,74 @@
   const $ = id => document.getElementById(id);
   let refreshing = false;
   let createdId = '';
+  let masterToggledManually = false;
 
   function notice(message, error = false) {
     $('access-notice').textContent = message;
     $('access-notice').classList.toggle('error', error);
   }
 
+  function masterNotice(message, error = false) {
+    const el = $('master-pw-notice');
+    if (!el) return;
+    el.textContent = message;
+    el.classList.toggle('error', error);
+  }
+
+  function clearMasterInputs() {
+    if ($('master-current')) $('master-current').value = '';
+    if ($('master-new')) $('master-new').value = '';
+    if ($('master-confirm')) $('master-confirm').value = '';
+  }
+
+  function setMasterFormOpen(open) {
+    const form = $('master-pw-form');
+    const toggle = $('master-pw-toggle');
+    if (!form || !toggle) return;
+    form.hidden = !open;
+    toggle.textContent = open ? '收起' : '修改主密码';
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (!open) {
+      clearMasterInputs();
+    }
+  }
+
+  function renderMaster(master) {
+    const card = $('master-pw-card');
+    const badge = $('master-pw-badge');
+    const meta = $('master-pw-meta');
+    if (!card || !badge || !meta || !master) return;
+
+    const isWeak = Boolean(master.using_default_weak);
+    card.classList.toggle('is-weak-default', isWeak);
+
+    if (isWeak) {
+      badge.className = 'pw-badge-warn';
+      badge.textContent = '默认弱密码 · 请立即修改';
+      meta.textContent = '检测到当前仍在使用默认弱密码，建议立即更换为专属高强度主密码。';
+      if (!masterToggledManually) {
+        setMasterFormOpen(true);
+      }
+      return;
+    }
+
+    if (master.source === 'custom') {
+      badge.className = 'pw-badge-active';
+      badge.textContent = '已设自定义密码';
+      meta.textContent = `上次网页改密：${date(master.updated_at)}（初始环境变量密码已作废）`;
+      return;
+    }
+
+    badge.className = 'pw-badge-active';
+    badge.textContent = '环境变量密钥';
+    meta.textContent = '当前使用服务器环境变量配置的初始密钥，可随时在此更换为新的主密码。';
+  }
+
   function forgetPassword() {
     $('access-secret').value = '';
     $('access-created').hidden = true;
     createdId = '';
+    clearMasterInputs();
   }
 
   function date(value) {
@@ -95,7 +153,8 @@
     $('access-refresh').disabled = true;
     try {
       const result = await apiFetch('/api/admin/access-passwords');
-      render(result.passwords);
+      render(result.passwords || []);
+      renderMaster(result.master);
     } catch (error) {
       if (!handleAdminError(error)) notice(error.message || '加载失败，请刷新列表。', true);
     } finally {
@@ -130,6 +189,89 @@
       $('access-create').textContent = '创建操作密码';
     }
   });
+
+  if ($('master-pw-toggle')) {
+    $('master-pw-toggle').onclick = () => {
+      masterToggledManually = true;
+      masterNotice('');
+      const nextOpen = Boolean($('master-pw-form')?.hidden);
+      setMasterFormOpen(nextOpen);
+      if (nextOpen) setTimeout(() => $('master-current')?.focus(), 30);
+    };
+  }
+
+  if ($('master-pw-cancel')) {
+    $('master-pw-cancel').onclick = () => {
+      masterToggledManually = true;
+      masterNotice('');
+      setMasterFormOpen(false);
+    };
+  }
+
+  if ($('master-pw-form')) {
+    $('master-pw-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      if (state.role !== 'admin') return;
+
+      const currentPassword = $('master-current').value;
+      const newPassword = $('master-new').value;
+      const confirmPassword = $('master-confirm').value;
+
+      if (!currentPassword) {
+        masterNotice('请输入当前主密码。', true);
+        $('master-current').focus();
+        return;
+      }
+      if (newPassword.length < 8) {
+        masterNotice('新主密码长度不能少于 8 个字符。', true);
+        $('master-new').focus();
+        return;
+      }
+      if (newPassword.startsWith('smop_')) {
+        masterNotice('新主密码不能以 smop_ 开头。', true);
+        $('master-new').focus();
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        masterNotice('两次输入的新主密码不一致，请重新确认。', true);
+        $('master-confirm').focus();
+        return;
+      }
+      if (newPassword === currentPassword) {
+        masterNotice('新主密码不能与当前主密码相同。', true);
+        $('master-new').focus();
+        return;
+      }
+
+      const submitBtn = $('master-pw-submit');
+      submitBtn.disabled = true;
+      submitBtn.textContent = '保存中...';
+      masterNotice('');
+
+      try {
+        const result = await apiFetch('/api/admin/master-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            current_password: currentPassword,
+            new_password: newPassword,
+          }),
+        });
+        masterToggledManually = true;
+        setMasterFormOpen(false);
+        renderMaster(result.master);
+        masterNotice('主管理员密码已更新，其他设备上的旧管理员登录已自动失效。');
+        if (typeof toast === 'function') toast('主管理员密码已更新');
+      } catch (error) {
+        if (!handleAdminError(error)) {
+          masterNotice(error.message || '修改主密码失败，请重试。', true);
+        }
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '保存新主密码';
+      }
+    });
+  }
 
   $('access-copy').onclick = () => copyText($('access-secret').value, '操作密码已复制');
   $('access-copy-instructions').onclick = () => {

@@ -35,6 +35,29 @@ test('generated operator passwords are independent, hashed, and revocable', () =
     assert.equal(access.authenticate(second.password).role, 'operator');
     assert.equal(access.authenticate('test-only-master').role, 'admin');
     assert.equal(new AccessControl(db, '').authenticate(second.password), null);
+
+    // Master password override & recovery
+    assert.equal(access.masterStatus().source, 'env');
+    assert.throws(() => access.changeMasterPassword('wrong', 'new-strong-master-123'), /当前主密码/);
+    assert.throws(() => access.changeMasterPassword('test-only-master', 'short'), /8 - 256/);
+    assert.throws(() => access.changeMasterPassword('test-only-master', 'smop_forbidden'), /smop_/);
+    assert.throws(() => access.changeMasterPassword('test-only-master', 'change-me-in-production'), /弱密码/);
+
+    const oldAdminIdentity = access.authenticate('test-only-master');
+    const changed = access.changeMasterPassword('test-only-master', 'new-strong-master-2026');
+    assert.equal(changed.source, 'custom');
+    assert.equal(access.authenticate('test-only-master'), null);
+    assert.equal(access.isActive(oldAdminIdentity), false);
+    assert.equal(access.authenticate('new-strong-master-2026').role, 'admin');
+    assert.equal(access.authenticate(second.password).role, 'operator');
+
+    const storedMaster = db.prepare("SELECT * FROM admin_settings WHERE key='master_password'").get();
+    assert.ok(!JSON.stringify(storedMaster).includes('new-strong-master-2026'));
+
+    const reset = access.resetMasterToEnv();
+    assert.equal(reset.reset, true);
+    assert.equal(access.authenticate('new-strong-master-2026'), null);
+    assert.equal(access.authenticate('test-only-master').role, 'admin');
   } finally { db.close(); }
 });
 
@@ -263,5 +286,68 @@ test('real server enforces operator scope through API keys and browser sessions'
 
     // Valid automation from normal IP remains completely unaffected
     assert.equal((await request('/api/mailboxes', { key: second.password })).status, 200);
+  });
+
+  await t.test('master password can be rotated in web UI and recovered live via CLI without losing data', async () => {
+    // Operator cannot change master password
+    assert.equal(
+      (await request('/api/admin/master-password', {
+        key: second.password,
+        method: 'POST',
+        body: { current_password: adminKey, new_password: 'operator-attempt-password' },
+      })).status,
+      403
+    );
+
+    // Refresh adminCookie (server was restarted in earlier subtest) and open a second device session
+    const freshLogin = await request('/api/admin/login', { method: 'POST', body: { password: adminKey } });
+    assert.equal(freshLogin.status, 200);
+    adminCookie = freshLogin.cookie;
+
+    const otherLogin = await request('/api/admin/login', { method: 'POST', body: { password: adminKey } });
+    assert.equal(otherLogin.status, 200);
+    const otherAdminCookie = otherLogin.cookie;
+
+    // Typo in current_password returns 400 without dropping the current admin session
+    const wrongCurrent = await request('/api/admin/master-password', {
+      cookie: adminCookie,
+      method: 'POST',
+      body: { current_password: 'typo-current-password', new_password: 'rotated-master-key-2026' },
+    });
+    assert.equal(wrongCurrent.status, 400);
+    assert.equal((await request('/api/admin/access-passwords', { cookie: adminCookie })).status, 200);
+
+    // Valid rotation updates password, refreshes current session cookie, and revokes other admin sessions + old API_KEY
+    const rotatedKey = 'rotated-master-key-2026!';
+    const rotated = await request('/api/admin/master-password', {
+      cookie: adminCookie,
+      method: 'POST',
+      body: { current_password: adminKey, new_password: rotatedKey },
+    });
+    assert.equal(rotated.status, 200);
+    assert.equal(rotated.data.master.source, 'custom');
+    assert.ok(rotated.cookie);
+    adminCookie = rotated.cookie;
+
+    assert.equal((await request('/api/admin/access-passwords', { cookie: adminCookie })).status, 200);
+    assert.equal((await request('/api/admin/access-passwords', { cookie: otherAdminCookie })).status, 401);
+    assert.equal((await request('/api/admin/access-passwords', { key: adminKey })).status, 401);
+    assert.equal((await request('/api/admin/access-passwords', { key: rotatedKey })).status, 200);
+    assert.equal((await request('/api/mailboxes', { key: second.password })).status, 200);
+
+    // Forgotten password CLI reset works live WITHOUT restarting server.js and preserves mailboxes
+    const resetScript = path.resolve(__dirname, '..', 'scripts', 'reset-password.js');
+    const cliReset = spawn(process.execPath, [resetScript], {
+      cwd: path.resolve(__dirname, '..'),
+      windowsHide: true,
+      env: { ...process.env, DATA_DIR: f.folder, API_KEY: adminKey },
+    });
+    const [exitCode] = await once(cliReset, 'exit');
+    assert.equal(exitCode, 0);
+
+    assert.equal((await request('/api/admin/access-passwords', { key: rotatedKey })).status, 401);
+    assert.equal((await request('/api/admin/access-passwords', { cookie: adminCookie })).status, 401);
+    assert.equal((await request('/api/admin/access-passwords', { key: adminKey })).status, 200);
+    assert.equal((await request('/api/mailboxes', { key: adminKey })).data.mailboxes.length, 35);
   });
 });

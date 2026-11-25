@@ -183,11 +183,21 @@ server {
 
 > `proxy_read_timeout 320s` 可确保 `/api/mailbox/:address/wait` 长轮询连接不会被反向代理提前切断。
 
-#### 备份与恢复
+#### 备份、恢复与忘记主密码重置
 
 持久化状态仅包含 `DATA_DIR` 下的以下文件（请务必**同时备份数据库与密钥文件**）：
 - `mail.db`、`mail.db-wal`、`mail.db-shm`
 - `.amelu-key`（若未通过环境变量固定指定 `AMELU_SECRET_KEY`）
+
+主管理员可在后台「密钥」页随时在线修改主密码（仅以加盐哈希存入数据库，修改后其他设备旧会话立即失效）。若日后忘记在网页修改过的主密码，可在服务器项目目录执行以下命令**免重启即时恢复**（不影响任何邮箱与邮件数据）：
+
+```bash
+# 恢复为服务器环境变量 API_KEY 初始密码
+npm run reset-password
+
+# 或直接强制重设为指定新主密码
+npm run reset-password -- "your-new-strong-password"
+```
 
 ### 测试
 

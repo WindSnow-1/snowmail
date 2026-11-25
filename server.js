@@ -353,7 +353,7 @@ function clearAdminSession(req, res) {
 }
 
 function auth(req, res, next) {
-  if (!CONFIG.apiKey) {
+  if (!accessControl.isConfigured()) {
     return res.status(503).json({ error: 'Admin API key is not configured' });
   }
 
@@ -675,7 +675,7 @@ app.get('/admin', (req, res) => {
 });
 
 app.post('/api/admin/login', (req, res) => {
-  if (!CONFIG.apiKey) {
+  if (!accessControl.isConfigured()) {
     return res.status(503).json({ error: 'Admin API key is not configured' });
   }
   if (!hasMatchingSameOrigin(req)) {
@@ -710,7 +710,33 @@ app.get('/api/admin/session', auth, (req, res) => {
 });
 
 app.get('/api/admin/access-passwords', adminOnly, (req, res) => {
-  res.json({ passwords: accessControl.list() });
+  res.json({
+    passwords: accessControl.list(),
+    master: accessControl.masterStatus(),
+  });
+});
+
+app.post('/api/admin/master-password', adminOnly, (req, res) => {
+  if (checkAuthFailureLimit(req, res)) {
+    return;
+  }
+  const currentPassword = typeof req.body?.current_password === 'string' ? req.body.current_password : '';
+  const newPassword = typeof req.body?.new_password === 'string' ? req.body.new_password : '';
+  try {
+    const master = accessControl.changeMasterPassword(currentPassword, newPassword);
+    for (const [token, session] of adminSessions) {
+      if (session.identity?.role === 'admin') adminSessions.delete(token);
+    }
+    if (getCookieValue(req, ADMIN_SESSION_COOKIE)) {
+      setAdminSession(req, res, { role: 'admin', masterVersion: master.updated_at });
+    }
+    res.json({ success: true, master });
+  } catch (error) {
+    if (error.code === 'WRONG_CURRENT_PASSWORD') {
+      recordAuthFailure(req);
+    }
+    res.status(error.status || 500).json({ error: error.status ? error.message : '修改主密码失败，请稍后重试。' });
+  }
 });
 
 app.post('/api/admin/access-passwords', adminOnly, (req, res) => {
@@ -982,7 +1008,7 @@ if (CONFIG.smtpEnabled) smtpServer.listen(CONFIG.smtpPort, '0.0.0.0', () => {
   console.log('');
   console.log(`SnowMail ${CONFIG.domains.join(', ')}`);
   console.log(`SMTP :${CONFIG.smtpPort}  API :${CONFIG.apiPort}`);
-  console.log(`API key: ${CONFIG.apiKey ? 'enabled' : 'disabled'}`);
+  console.log(`API key: ${accessControl.isConfigured() ? 'enabled' : 'disabled'}`);
   console.log('');
 });
 
