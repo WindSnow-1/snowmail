@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SnowMail · 邮箱收件</title>
+<meta name="description" content="SnowMail 公开单邮箱收件页">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%2307080C'/%3E%3Crect x='3' y='3' width='8' height='8' rx='2' fill='%23FFFFFF'/%3E%3Crect x='13' y='3' width='8' height='8' rx='2' fill='%230038FF'/%3E%3Crect x='3' y='13' width='8' height='8' rx='2' fill='%23525866'/%3E%3Crect x='13' y='13' width='8' height='8' rx='2' fill='%23FFFFFF'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/snowmail-21st.css">
+<script src="/snowmail-ui.js"></script>
+<style>
+body.mode1-glass {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 24px;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.mode1-public-window {
+  position: relative;
+  z-index: 1;
+  width: min(1620px, 92vw);
+  height: min(960px, 92dvh);
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 38px 96px rgba(0, 0, 0, 0.72),
+    0 0 0 1px rgba(0, 56, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  background: transparent;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mode1-public-window .glass-header {
+  position: relative;
+  z-index: 35;
+  flex-shrink: 0;
+  background: var(--bg-rail);
+  backdrop-filter: saturate(155%) blur(var(--glass-blur));
+  -webkit-backdrop-filter: saturate(155%) blur(var(--glass-blur));
+}
+
+.header-inner {
+  height: 100%;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.addr-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 7px 5px 13px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-strong);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.addr-text {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: #FFFFFF;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mob-pub-hero,
+.mob-pub-back {
+  display: none;
+}
+
+.public-shell {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+}
+
+.stream-rail {
+  background: var(--bg-pane);
+  backdrop-filter: saturate(155%) blur(var(--glass-blur));
+  -webkit-backdrop-filter: saturate(155%) blur(var(--glass-blur));
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.stats-strip {
+  padding: 13px 15px;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.stat-tile {
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+.stat-tile span {
+  display: block;
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.stat-tile strong {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 19px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.list-toolbar {
+  padding: 12px 15px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.list-toolbar h2 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-secondary);
+}
+
+.mail-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mail-item {
+  width: 100%;
+  text-align: left;
+  padding: 13px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--fg);
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  transition: background-color 150ms ease, border-color 150ms ease, transform 120ms ease;
+}
+
+.mail-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mail-item:active {
+  transform: scale(0.99);
+}
+
+.mail-item.active {
+  background: rgba(0, 56, 255, 0.22);
+  border-color: rgba(71, 120, 255, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.mail-item-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.mail-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mail-from {
+  font-size: 13px;
+  font-weight: 600;
+  color: #FFFFFF;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mail-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.mail-subject {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--fg-secondary);
+  line-height: 1.45;
+}
+
+.viewer {
+  background: var(--bg-reader);
+  backdrop-filter: saturate(155%) blur(var(--glass-blur));
+  -webkit-backdrop-filter: saturate(155%) blur(var(--glass-blur));
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.viewer-head {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.viewer-head h1 {
+  font-size: clamp(19px, 2.1vw, 25px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #FFFFFF;
+}
+
+.viewer-meta {
+  margin-top: 8px;
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.viewer-body-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px 28px;
+}
+
+.viewer-text {
+  font-size: 14.5px;
+  line-height: 1.8;
+  color: var(--fg-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 74ch;
+}
+
+.empty {
+  height: 100%;
+  min-height: 200px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--fg-muted);
+  padding: 28px;
+  font-size: 13.5px;
+}
+
+/* Flagship Mobile Single-Screen Layout */
+@media (max-width: 860px) {
+  body.mode1-glass {
+    padding: 8px;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .mode1-public-window {
+    width: 100%;
+    height: calc(100dvh - 16px);
+    border-radius: 24px;
+    background: rgba(8, 10, 18, var(--glass-alpha));
+    backdrop-filter: saturate(165%) blur(var(--glass-blur));
+    -webkit-backdrop-filter: saturate(165%) blur(var(--glass-blur));
+  }
+
+  .mode1-public-window .glass-header {
+    height: 50px;
+    background: rgba(8, 10, 18, 0.45);
+  }
+
+  .header-inner {
+    padding: 0 14px;
+  }
+
+  .addr-pill {
+    display: none;
+  }
+
+  .mob-pub-hero {
+    display: block;
+    margin: 12px 12px 4px;
+    padding: 14px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(0, 56, 255, 0.28), rgba(16, 24, 54, 0.66) 55%, rgba(10, 14, 28, 0.78));
+    border: 1px solid rgba(77, 124, 255, 0.52);
+    box-shadow: 0 14px 34px -10px rgba(0, 56, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .stats-strip {
+    display: none;
+  }
+
+  .public-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stream-rail,
+  .viewer {
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-right: 0;
+  }
+
+  .public-shell:not(.reading-open) .viewer {
+    display: none;
+  }
+
+  .public-shell.reading-open .stream-rail {
+    display: none;
+  }
+
+  .mob-pub-back {
+    display: inline-flex;
+    margin-bottom: 12px;
+  }
+
+  .viewer-head {
+    padding: 14px 16px 12px;
+  }
+
+  .viewer-body-wrap {
+    padding: 14px 16px 24px;
+  }
+}
+</style>
+</head>
+<body class="mode1-glass">
+<canvas id="cobalt-waves" class="mode1-shader-bg" data-mode="window" aria-hidden="true"></canvas>
+<div class="toast-21" id="toast"></div>
+
+<div class="mode1-public-window">
+  <header class="glass-header">
+    <div class="header-inner">
+      <a class="brand-21" href="/verify.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="2" y="2" width="9" height="9" rx="2.2" fill="#FFFFFF"/>
+          <rect x="13" y="2" width="9" height="9" rx="2.2" fill="#0038FF"/>
+          <rect x="2" y="13" width="9" height="9" rx="2.2" fill="rgba(255,255,255,0.32)"/>
+          <rect x="13" y="13" width="9" height="9" rx="2.2" fill="#FFFFFF"/>
+        </svg>
+        <span class="brand-21-name">SNOWMAIL</span>
+      </a>
+
+      <div class="addr-pill">
+        <span class="lime-dot pulse" title="每 10 秒自动查收"></span>
+        <span class="addr-text" id="mailbox-address">-</span>
+        <button class="icon-btn" id="copy-addr-btn" type="button">复制地址</button>
+      </div>
+
+      <div class="header-actions">
+        <div id="public-opacity-slot" class="sm-opacity-anchor"></div>
+        <button class="btn-secondary" id="refresh-btn" type="button" style="min-height:30px;padding:0 11px;font-size:12px;border-radius:8px;">刷新</button>
+        <a class="btn-secondary" href="/verify.html" style="min-height:30px;padding:0 11px;font-size:12px;border-radius:8px;">切换</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="public-shell" id="public-shell">
+    <aside class="stream-rail">
+      <!-- Flagship Mobile Mailbox Hero Card -->
+      <div class="mob-pub-hero">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#B8CCFF;">
+          <span style="display:inline-flex;align-items:center;gap:6px;"><span class="lime-dot pulse"></span>只读自动查收 · 10s</span>
+          <span class="mono">共 <strong id="mob-mail-count">0</strong> 封</span>
+        </div>
+        <div class="mono" id="mob-mailbox-address" style="margin-top:6px;font-size:15px;font-weight:600;color:#FFFFFF;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">-</div>
+        <div style="margin-top:11px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;">
+          <button class="btn-secondary" id="mob-copy-addr-btn" type="button" style="min-height:33px;padding:0 10px;font-size:12px;border-radius:10px;">复制邮箱地址</button>
+          <a class="btn-primary" href="/verify.html" style="min-height:33px;padding:0 10px;font-size:12px;border-radius:10px;">切换其他邮箱</a>
+        </div>
+      </div>
+
+      <div class="stats-strip">
+        <div class="stat-tile">
+          <span>邮件数量</span>
+          <strong id="mail-count">0</strong>
+        </div>
+        <div class="stat-tile">
+          <span>自动刷新</span>
+          <strong id="mail-refresh">10s</strong>
+        </div>
+      </div>
+
+      <div class="list-toolbar">
+        <h2>收件列表（最新 20 封）</h2>
+        <span class="cobalt-tag">只读沙箱</span>
+      </div>
+      <div class="mail-list" id="mail-list"></div>
+    </aside>
+
+    <section class="viewer">
+      <div class="viewer-head">
+        <button class="icon-btn mob-pub-back" id="mob-back-btn" type="button">← 返回收件列表</button>
+        <h1 id="detail-subject">选择一封邮件</h1>
+        <div class="viewer-meta">
+          <span id="detail-from">-</span>
+          <span id="detail-time">-</span>
+        </div>
+      </div>
+      <div class="viewer-body-wrap">
+        <div id="otp-slot"></div>
+        <div id="detail-body">
+          <div class="empty">验证通过后，这里只显示该邮箱收到的邮件内容。</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const state = {
+  address: '',
+  emails: [],
+  selectedId: 0,
+  activeRequests: 0,
+  codeCache: {},
+};
+
+function toast(message) {
+  const el = document.getElementById('toast');
+  el.textContent = message;
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function copyText(value, label) {
+  if (!value) return;
+  const done = () => toast(label || '已复制');
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(value).then(done).catch(() => fallbackCopy(value, done));
+    return;
+  }
+  fallbackCopy(value, done);
+}
+
+function fallbackCopy(value, done) {
+  const area = document.createElement('textarea');
+  area.value = value;
+  area.style.position = 'fixed';
+  area.style.left = '-9999px';
+  document.body.appendChild(area);
+  area.select();
+  document.execCommand('copy');
+  document.body.removeChild(area);
+  done();
+}
+
+function formatTime(value) {
+  if (!value) return '-';
+  const parsed = new Date(/Z$|[+-]\d{2}:\d{2}$/.test(value) ? value : `${value}Z`);
+  return parsed.toLocaleString('zh-CN', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function escapeHtml(value) {
+  const div = document.createElement('div');
+  div.textContent = value || '';
+  return div.innerHTML;
+}
+
+async function requestJson(url) {
+  state.activeRequests += 1;
+  try {
+    const response = await fetch(url, { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || '请求失败');
+    }
+    return data;
+  } finally {
+    state.activeRequests = Math.max(0, state.activeRequests - 1);
+  }
+}
+
+function renderOtpBanner(code) {
+  const slot = document.getElementById('otp-slot');
+  slot.replaceChildren();
+  if (!code) return;
+
+  const card = document.createElement('div');
+  card.className = 'otp-shimmer-card';
+  card.innerHTML = `
+    <div>
+      <div class="otp-label">已自动识别验证码</div>
+      <div class="otp-digits">${escapeHtml(code)}</div>
+    </div>
+  `;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-primary';
+  btn.style.minHeight = '36px';
+  btn.style.padding = '0 15px';
+  btn.style.fontSize = '12.5px';
+  btn.textContent = '一键复制验证码';
+  btn.onclick = () => copyText(code, `验证码 ${code} 已复制`);
+  card.appendChild(btn);
+  slot.appendChild(card);
+}
+
+function renderList() {
+  const root = document.getElementById('mail-list');
+  if (!state.emails.length) {
+    root.innerHTML = '<div class="empty">这个邮箱暂时还没有收到邮件。</div>';
+    return;
+  }
+
+  root.innerHTML = state.emails.map(mail => {
+    const subjectCode = window.SnowMailUI
+      ? window.SnowMailUI.extractVerificationCode(mail.subject, '')
+      : '';
+    const code = state.codeCache[mail.id] || subjectCode;
+    const monogram = window.SnowMailUI
+      ? window.SnowMailUI.senderInitials(mail.sender)
+      : 'SM';
+    return `
+      <button class="mail-item${state.selectedId === mail.id ? ' active' : ''}" type="button" data-id="${mail.id}">
+        <div class="sender-monogram${code ? ' has-otp' : ''}">${escapeHtml(monogram)}</div>
+        <div class="mail-item-body">
+          <div class="mail-top">
+            <span class="mail-from">${escapeHtml(mail.sender)}</span>
+            <span class="mail-time">${formatTime(mail.received_at)}</span>
+          </div>
+          <div class="mail-subject">${escapeHtml(mail.subject || '(无主题)')}</div>
+          ${code ? `<div style="margin-top:8px"><span class="cobalt-tag">✦ 验证码 ${escapeHtml(code)}</span></div>` : ''}
+        </div>
+      </button>
+    `;
+  }).join('');
+
+  root.querySelectorAll('.mail-item').forEach(button => {
+    button.addEventListener('click', () => openMail(Number(button.dataset.id), true));
+  });
+}
+
+function setEmptyDetail(message) {
+  document.getElementById('detail-subject').textContent = '选择一封邮件';
+  document.getElementById('detail-from').textContent = '-';
+  document.getElementById('detail-time').textContent = '-';
+  renderOtpBanner('');
+  document.getElementById('detail-body').innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
+}
+
+async function openMail(id, userClicked) {
+  const item = state.emails.find(mail => mail.id === id);
+  if (!item) return;
+
+  state.selectedId = id;
+  if (userClicked) {
+    document.getElementById('public-shell').classList.add('reading-open');
+  }
+  renderList();
+  document.getElementById('detail-subject').textContent = item.subject || '(无主题)';
+  document.getElementById('detail-from').textContent = item.sender || '-';
+  document.getElementById('detail-time').textContent = formatTime(item.received_at);
+  renderOtpBanner('');
+  document.getElementById('detail-body').innerHTML = '<div class="empty">正在加载邮件内容...</div>';
+
+  try {
+    const detail = await requestJson(`/api/public/email/${id}?address=${encodeURIComponent(state.address)}`);
+    const bodyContent = detail.body_text || detail.body_html || '(无内容)';
+    const code = window.SnowMailUI
+      ? window.SnowMailUI.extractVerificationCode(detail.subject, bodyContent)
+      : '';
+    if (code) {
+      state.codeCache[id] = code;
+      renderList();
+    }
+    renderOtpBanner(code);
+    document.getElementById('detail-subject').textContent = detail.subject || '(无主题)';
+    document.getElementById('detail-from').textContent = detail.sender || '-';
+    document.getElementById('detail-time').textContent = formatTime(detail.received_at);
+    const bodyEl = document.createElement('div');
+    bodyEl.className = 'viewer-text';
+    bodyEl.textContent = bodyContent;
+    document.getElementById('detail-body').replaceChildren(bodyEl);
+  } catch (error) {
+    setEmptyDetail(error.message || '加载失败');
+  }
+}
+
+async function refreshMailbox() {
+  const data = await requestJson(`/api/public/mailbox/${encodeURIComponent(state.address)}`);
+  state.emails = data.emails || [];
+  const addr = data.address || state.address;
+  const countStr = String(data.count || 0);
+  document.getElementById('mailbox-address').textContent = addr;
+  document.getElementById('mob-mailbox-address').textContent = addr;
+  document.getElementById('mail-count').textContent = countStr;
+  document.getElementById('mob-mail-count').textContent = countStr;
+  renderList();
+
+  if (!state.emails.length) {
+    setEmptyDetail('这个邮箱暂时还没有收到邮件。');
+    state.selectedId = 0;
+    document.getElementById('public-shell').classList.remove('reading-open');
+    return;
+  }
+
+  const currentExists = state.selectedId && state.emails.some(mail => mail.id === state.selectedId);
+  if (!currentExists && window.innerWidth > 860) {
+    await openMail(state.emails[0].id, false);
+  }
+}
+
+async function boot() {
+  const params = new URLSearchParams(location.search);
+  state.address = String(params.get('address') || '').trim().toLowerCase();
+  if (!state.address || !state.address.includes('@')) {
+    location.href = '/verify.html';
+    return;
+  }
+
+  document.getElementById('mailbox-address').textContent = state.address;
+  document.getElementById('mob-mailbox-address').textContent = state.address;
+  document.title = `SnowMail · ${state.address}`;
+
+  try {
+    await refreshMailbox();
+  } catch (error) {
+    setEmptyDetail(error.message || '这个邮箱不存在，或者暂时无法访问。');
+  }
+}
+
+document.getElementById('copy-addr-btn').addEventListener('click', () => {
+  copyText(state.address, '邮箱地址已复制');
+});
+document.getElementById('mob-copy-addr-btn').addEventListener('click', () => {
+  copyText(state.address, '邮箱地址已复制');
+});
+document.getElementById('mob-back-btn').addEventListener('click', () => {
+  document.getElementById('public-shell').classList.remove('reading-open');
+});
+
+document.getElementById('refresh-btn').addEventListener('click', () => {
+  refreshMailbox()
+    .then(() => toast('已同步最新收件'))
+    .catch(error => setEmptyDetail(error.message || '刷新失败'));
+});
+
+setInterval(() => {
+  if (!state.address || state.activeRequests > 0 || document.hidden) return;
+  refreshMailbox().catch(() => {});
+}, 10000);
+
+boot();
+</script>
+</body>
+</html>

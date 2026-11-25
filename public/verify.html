@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SnowMail · 公开邮箱验证</title>
+<meta name="description" content="输入已分配的邮箱地址，查看该信箱收到的验证码与邮件">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%2307080C'/%3E%3Crect x='3' y='3' width='8' height='8' rx='2' fill='%23FFFFFF'/%3E%3Crect x='13' y='3' width='8' height='8' rx='2' fill='%230038FF'/%3E%3Crect x='3' y='13' width='8' height='8' rx='2' fill='%23525866'/%3E%3Crect x='13' y='13' width='8' height='8' rx='2' fill='%23FFFFFF'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/snowmail-21st.css">
+<script src="/snowmail-ui.js"></script>
+<style>
+.verify-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.shader-bg {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.header-inner {
+  max-width: 1200px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.stage {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 36px 24px 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hero-center {
+  width: 100%;
+  max-width: 560px;
+  text-align: center;
+  margin: auto 0;
+}
+
+.hero-center h1 {
+  font-size: clamp(34px, 4.8vw, 54px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.036em;
+  color: #FFFFFF;
+}
+
+.hero-sub {
+  margin-top: 14px;
+  font-size: 15.5px;
+  color: var(--fg-secondary);
+  line-height: 1.6;
+}
+
+.verify-shell {
+  margin: 30px auto 0;
+  max-width: 470px;
+  width: 100%;
+}
+
+.glass-bar-form {
+  padding: 6px;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.065);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.glass-bar-form:focus-within {
+  border-color: rgba(59, 107, 255, 0.65);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.62), 0 0 0 3px rgba(0, 56, 255, 0.24);
+}
+
+.bar-input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  color: #FFFFFF;
+  font-size: 14px;
+  outline: none;
+}
+
+.bar-input::placeholder {
+  color: rgba(245, 246, 250, 0.42);
+}
+
+.bar-submit {
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 11px;
+  flex-shrink: 0;
+}
+
+.recent-row {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.recent-label {
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.error {
+  display: none;
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: 11px;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: #FECACA;
+  font-size: 13px;
+  text-align: left;
+}
+
+.error.show {
+  display: block;
+}
+
+.bottom-status-row {
+  padding-top: 24px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+@media (max-width: 560px) {
+  .glass-bar-form {
+    flex-wrap: wrap;
+    padding: 10px;
+  }
+  .bar-input {
+    width: 100%;
+    flex-basis: 100%;
+  }
+  .bar-submit {
+    width: 100%;
+  }
+  .health-extra {
+    display: none;
+  }
+}
+</style>
+</head>
+<body>
+<div class="verify-page">
+  <canvas id="cobalt-waves" class="shader-bg" aria-hidden="true"></canvas>
+
+  <header class="glass-header">
+    <div class="header-inner">
+      <a class="brand-21" href="/verify.html">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="2" y="2" width="9" height="9" rx="2.2" fill="#FFFFFF"/>
+          <rect x="13" y="2" width="9" height="9" rx="2.2" fill="#0038FF"/>
+          <rect x="2" y="13" width="9" height="9" rx="2.2" fill="rgba(255,255,255,0.32)"/>
+          <rect x="13" y="13" width="9" height="9" rx="2.2" fill="#FFFFFF"/>
+        </svg>
+        <span class="brand-21-name">SNOWMAIL</span>
+      </a>
+
+      <a class="btn-secondary" href="/" style="min-height:36px;padding:0 14px;font-size:13px;">管理员登录</a>
+    </div>
+  </header>
+
+  <main class="stage">
+    <div aria-hidden="true"></div>
+
+    <section class="hero-center">
+      <h1>Open your shared<br>temporary inbox.</h1>
+      <p class="hero-sub">输入一个已创建且未过期的完整邮箱地址，单独查看该地址收到的验证码与邮件。</p>
+
+      <div class="verify-shell">
+        <form id="verify-form" class="glass-bar-form" novalidate>
+          <input
+            id="address"
+            name="address"
+            class="bar-input mono"
+            type="email"
+            aria-label="邮箱地址"
+            placeholder="请输入完整邮箱地址，如 name@example.com"
+            autocomplete="off"
+            spellcheck="false"
+            required
+          >
+          <button id="submit" class="btn-primary bar-submit" type="submit">进入邮箱</button>
+        </form>
+
+        <div id="recent-box" class="recent-row" hidden>
+          <span class="recent-label">最近查看</span>
+          <button id="recent-chip" class="icon-btn mono" type="button"></button>
+        </div>
+
+        <div class="error" id="error" role="alert"></div>
+      </div>
+    </section>
+
+    <footer class="bottom-status-row">
+      <div id="health-pill" class="health-pill" role="status" aria-live="polite">
+        <span style="display:inline-flex;align-items:center;gap:8px;color:#F5F6FA;">
+          <span class="lime-dot pulse"></span>
+          <span>服务在线</span>
+        </span>
+        <span class="sep">·</span>
+        <span>正在读取运行状态...</span>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<script>
+const form = document.getElementById('verify-form');
+const input = document.getElementById('address');
+const errorBox = document.getElementById('error');
+const submitButton = document.getElementById('submit');
+const recentBox = document.getElementById('recent-box');
+const recentChip = document.getElementById('recent-chip');
+
+function showError(message) {
+  errorBox.textContent = message;
+  errorBox.classList.add('show');
+}
+
+function clearError() {
+  errorBox.textContent = '';
+  errorBox.classList.remove('show');
+}
+
+function normalizeAddress(value) {
+  return String(value || '').trim().replace(/\s+/g, '').toLowerCase();
+}
+
+try {
+  const saved = sessionStorage.getItem('snowmail_last_public_address');
+  if (saved && saved.includes('@')) {
+    recentChip.textContent = saved;
+    recentBox.hidden = false;
+    recentChip.addEventListener('click', () => {
+      input.value = saved;
+      form.requestSubmit();
+    });
+  }
+} catch {}
+
+form.addEventListener('submit', async event => {
+  event.preventDefault();
+  clearError();
+  const address = normalizeAddress(input.value);
+
+  if (!address || !address.includes('@')) {
+    showError('请输入完整的邮箱地址。');
+    input.focus();
+    return;
+  }
+
+  submitButton.disabled = true;
+  submitButton.textContent = '正在验证...';
+
+  try {
+    const response = await fetch(`/api/public/mailbox/${encodeURIComponent(address)}/meta`, { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(response.status === 404 ? '这个邮箱不存在或已过期。' : data.error || '暂时无法打开该邮箱。');
+    }
+    try { sessionStorage.setItem('snowmail_last_public_address', data.address); } catch {}
+    window.location.href = `/mailbox.html?address=${encodeURIComponent(data.address)}`;
+  } catch (error) {
+    showError(error.message || '验证失败，请稍后再试。');
+    submitButton.disabled = false;
+    submitButton.textContent = '进入邮箱';
+  }
+});
+</script>
+</body>
+</html>

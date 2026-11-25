@@ -1,0 +1,10 @@
+node_modules/
+*.db
+*.db-wal
+*.db-shm
+.amelu-key
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store

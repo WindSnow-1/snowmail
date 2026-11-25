@@ -1,0 +1,2859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SnowMail · 管理后台</title>
+<meta name="description" content="SnowMail 多域名收信与临时邮箱管理工作台">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%2307080C'/%3E%3Crect x='3' y='3' width='8' height='8' rx='2' fill='%23FFFFFF'/%3E%3Crect x='13' y='3' width='8' height='8' rx='2' fill='%230038FF'/%3E%3Crect x='3' y='13' width='8' height='8' rx='2' fill='%23525866'/%3E%3Crect x='13' y='13' width='8' height='8' rx='2' fill='%23FFFFFF'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/snowmail-21st.css">
+<link rel="stylesheet" href="/amelu-admin.css">
+<link rel="stylesheet" href="/access-passwords.css">
+<script src="/snowmail-ui.js"></script>
+<style>
+body.mode1-glass {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 24px;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-shell {
+  position: relative;
+  z-index: 1;
+  width: min(1740px, 93vw);
+  height: min(980px, 93dvh);
+  display: grid;
+  grid-template-columns: 58px 268px minmax(0, 1fr);
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 38px 96px rgba(0, 0, 0, 0.72),
+    0 0 0 1px rgba(0, 56, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  background: transparent;
+  overflow: hidden;
+}
+
+@media (min-width: 861px) {
+  .app-shell:not([data-active-tab="inbox"]) {
+    grid-template-columns: 58px minmax(0, 1fr);
+  }
+  .app-shell:not([data-active-tab="inbox"]) .app-rail {
+    display: none;
+  }
+}
+
+.mob-top-bar,
+.mob-hero-card,
+.mob-keys-bar,
+.mob-floating-dock {
+  display: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+/* Option C: Far-Left 58px Dedicated Glowing Icon Rail */
+.icon-rail {
+  background: rgba(6, 8, 15, calc(var(--rail-alpha) + 0.08));
+  backdrop-filter: saturate(160%) blur(var(--glass-blur));
+  -webkit-backdrop-filter: saturate(160%) blur(var(--glass-blur));
+  border-right: 1px solid var(--border);
+  padding: 14px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 35;
+}
+
+.icon-rail-top,
+.icon-rail-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-rail-divider {
+  width: 22px;
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.rail-icon-btn {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: rgba(245, 246, 250, 0.48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: color 150ms ease, background-color 150ms ease, box-shadow 150ms ease, transform 140ms var(--ease);
+}
+
+.rail-icon-btn:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.rail-icon-btn.active {
+  color: #FFFFFF;
+  background: rgba(0, 56, 255, 0.36);
+  box-shadow: inset 0 0 0 1px rgba(92, 140, 255, 0.6), 0 8px 20px -4px rgba(0, 56, 255, 0.55);
+}
+
+.rail-icon-btn[data-tip]::after,
+.icon-role-dot[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: rgba(12, 16, 28, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
+  color: #FFFFFF;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease;
+  z-index: 80;
+}
+
+.rail-icon-btn[data-tip]:hover::after,
+.icon-role-dot[data-tip]:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.icon-role-dot {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: default;
+}
+
+.icon-rail .sm-opacity-pill {
+  width: 42px;
+  height: 28px;
+  padding: 0;
+  border-radius: 9px;
+  justify-content: center;
+}
+
+.icon-rail .sm-opacity-glyph {
+  display: none;
+}
+
+/* Second Column: Pure Mailbox List Rail */
+.app-rail {
+  background: var(--bg-rail);
+  backdrop-filter: saturate(155%) blur(var(--glass-blur));
+  -webkit-backdrop-filter: saturate(155%) blur(var(--glass-blur));
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px;
+  gap: 11px;
+  position: relative;
+  z-index: 15;
+}
+
+.rail-top-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px;
+}
+
+.domain-chip-mini {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-muted);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Compact Stats Trio */
+.rail-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.rail-stat {
+  padding: 9px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.rail-stat-val {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  color: #FFFFFF;
+  line-height: 1.1;
+}
+
+.rail-stat-lbl {
+  margin-top: 3px;
+  font-size: 10.5px;
+  color: var(--fg-muted);
+}
+
+/* Domain Selector + Create Row */
+.domain-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  z-index: var(--z-dropdown);
+}
+
+.domain-dropdown {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.domain-trigger {
+  width: 100%;
+  height: 36px;
+  padding: 0 11px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.045);
+  color: #FFFFFF;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.domain-trigger:hover,
+.domain-trigger.open {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--cobalt-border);
+}
+
+.domain-trigger span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.domain-arrow {
+  color: var(--fg-muted);
+  transition: transform 160ms ease;
+  flex-shrink: 0;
+}
+
+.domain-trigger.open .domain-arrow {
+  transform: rotate(180deg);
+}
+
+.domain-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  display: none;
+  padding: 5px;
+  border-radius: 11px;
+  background: #121520;
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.65);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.domain-menu.show {
+  display: block;
+}
+
+.domain-option {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--fg-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  text-align: left;
+}
+
+.domain-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #FFFFFF;
+}
+
+.domain-option.active {
+  background: var(--cobalt-soft);
+  color: #FFFFFF;
+}
+
+.domain-option.active::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cobalt);
+}
+
+.create-btn-pair {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
+/* Search Box */
+.rail-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rail-search {
+  width: 100%;
+  height: 36px;
+  padding: 0 46px 0 11px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.035);
+  color: #FFFFFF;
+  font-size: 12.5px;
+  outline: none;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.rail-search::placeholder {
+  color: var(--fg-faint);
+}
+
+.rail-search:focus {
+  background: rgba(255, 255, 255, 0.065);
+  border-color: var(--cobalt-border);
+}
+
+.rail-search-kbd {
+  position: absolute;
+  right: 7px;
+  pointer-events: none;
+}
+
+/* Section Heading in Mailbox Rail */
+.rail-section-label {
+  padding: 2px 4px 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--fg-faint);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Scrollable Mailboxes in Rail */
+.rail-mailboxes-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mailbox-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-right: 2px;
+}
+
+.mailbox-item {
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.mailbox-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mailbox-item.active {
+  background: rgba(0, 56, 255, 0.22);
+  border-color: rgba(71, 120, 255, 0.58);
+}
+
+.mb-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-alive { background: var(--lime); }
+.dot-expiring { background: var(--amber); }
+.dot-permanent { background: #4F7BFF; }
+
+.mailbox-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.mailbox-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: #FFFFFF;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mailbox-meta {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mailbox-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.mailbox-item:hover .mailbox-actions,
+.mailbox-item.active .mailbox-actions {
+  opacity: 1;
+}
+
+.mb-act {
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.mb-act:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+}
+
+.mb-act.del:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: #FCA5A5;
+}
+
+/* Rail Footer */
+.rail-footer {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-footer-btns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.rail-footer-btns .icon-btn {
+  min-height: 26px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+  border-radius: 7px;
+}
+
+/* Main Stage Surfaces */
+.main-stage {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(circle at 86% 0%, rgba(0, 56, 255, 0.1), transparent 38%);
+}
+
+.amelu-view,
+.passwords-view,
+#view-api {
+  background: var(--bg-reader);
+  backdrop-filter: saturate(150%) blur(var(--glass-blur));
+  -webkit-backdrop-filter: saturate(150%) blur(var(--glass-blur));
+}
+
+.tab-surface {
+  display: none;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+}
+
+.tab-surface.active {
+  display: flex;
+}
+
+/* Inbox Split (Middle Stream + Right Reading Pane) */
+.inbox-split {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 350px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+}
+
+.stream-pane {
+  background: var(--bg-pane);
+  backdrop-filter: saturate(155%) blur(var(--glass-blur));
+  -webkit-backdrop-filter: saturate(155%) blur(var(--glass-blur));
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.stream-head {
+  height: 54px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.stream-addr {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #FFFFFF;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stream-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.stream-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mail-card {
+  padding: 13px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 120ms ease;
+}
+
+.mail-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mail-card:active {
+  transform: scale(0.99);
+}
+
+.mail-card.active {
+  background: rgba(0, 56, 255, 0.22);
+  border-color: rgba(71, 120, 255, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.mail-card-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.mail-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mail-from {
+  font-size: 13px;
+  font-weight: 600;
+  color: #FFFFFF;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mail-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.mail-subject {
+  margin-top: 5px;
+  font-size: 13px;
+  color: var(--fg-secondary);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Right Reading Pane */
+.reader-pane {
+  background: var(--bg-reader);
+  backdrop-filter: saturate(150%) blur(var(--glass-blur));
+  -webkit-backdrop-filter: saturate(150%) blur(var(--glass-blur));
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.reader-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 36px;
+  gap: 12px;
+  color: var(--fg-muted);
+}
+
+.reader-empty-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(0, 56, 255, 0.15);
+  border: 1px solid var(--cobalt-border);
+  display: grid;
+  place-items: center;
+  color: #94B2FF;
+  font-size: 18px;
+}
+
+.reader-empty h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.reader-empty p {
+  font-size: 13px;
+  max-width: 34ch;
+}
+
+.reader-content {
+  flex: 1;
+  min-height: 0;
+  display: none;
+  flex-direction: column;
+}
+
+.reader-content.active {
+  display: flex;
+}
+
+.detail-toolbar {
+  min-height: 56px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mobile-back-btn {
+  display: none;
+}
+
+.seg-bar {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border);
+}
+
+.seg-item {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 7px;
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.seg-item:hover {
+  color: #FFFFFF;
+}
+
+.seg-item.active {
+  background: rgba(255, 255, 255, 0.11);
+  color: #FFFFFF;
+}
+
+.detail-header-meta {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-subject {
+  font-size: clamp(19px, 2vw, 24px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #FFFFFF;
+  line-height: 1.3;
+}
+
+.detail-meta {
+  margin-top: 8px;
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.detail-meta strong {
+  color: var(--fg-secondary);
+  font-weight: 500;
+}
+
+.detail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px 28px;
+}
+
+.detail-body {
+  font-size: 14.5px;
+  line-height: 1.8;
+  color: var(--fg-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 74ch;
+}
+
+.html-frame-wrap {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+}
+
+.html-frame {
+  width: 100%;
+  min-height: 460px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: #FFFFFF;
+  transition: max-width 200ms var(--ease);
+}
+
+.html-frame.mobile-vp {
+  max-width: 390px;
+}
+
+.raw-box {
+  display: none;
+  padding: 16px;
+  border-radius: 12px;
+  background: #08090E;
+  border: 1px solid var(--border);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--fg-secondary);
+}
+
+.empty-state {
+  height: 100%;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  color: var(--fg-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.empty-state strong {
+  display: block;
+  color: var(--fg-secondary);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* API Reference View */
+.api-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 26px 28px 36px;
+}
+
+.api-head-card {
+  padding: 24px;
+  border-radius: var(--r-xl);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.api-head-card h2 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.api-head-card p {
+  margin-top: 6px;
+  font-size: 13.5px;
+  color: var(--fg-muted);
+}
+
+.api-base-pill {
+  padding: 8px 10px 8px 14px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.api-base-pill code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #FFFFFF;
+}
+
+.api-bento-grid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.api-tile {
+  padding: 20px 22px;
+  border-radius: var(--r-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.api-tile-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.http-badge {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.http-badge.get { background: rgba(206, 255, 26, 0.14); color: var(--lime); }
+.http-badge.post { background: var(--cobalt-soft); color: var(--cobalt-text); }
+.http-badge.delete { background: var(--danger-bg); color: #FCA5A5; }
+
+.api-tile code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #FFFFFF;
+}
+
+.api-tile p {
+  font-size: 13px;
+  color: var(--fg-muted);
+  line-height: 1.6;
+}
+
+/* Modals */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(4, 5, 8, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.modal-overlay.show {
+  display: flex;
+}
+
+.modal-21 {
+  width: min(440px, 100%);
+  padding: 26px;
+  border-radius: var(--r-xl);
+  background: #10131D;
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.modal-21 h3 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #FFFFFF;
+}
+
+.modal-21 p {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--fg-muted);
+  line-height: 1.6;
+}
+
+.modal-label {
+  display: block;
+  margin-top: 18px;
+  margin-bottom: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--fg-secondary);
+}
+
+.time-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.time-option {
+  padding: 10px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.time-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.time-option.selected {
+  background: var(--cobalt-soft);
+  border-color: var(--cobalt-border);
+}
+
+.time-value {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.time-label {
+  font-size: 11px;
+  color: var(--fg-muted);
+  margin-top: 2px;
+}
+
+.modal-result {
+  display: none;
+  margin-top: 16px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: rgba(0, 56, 255, 0.14);
+  border: 1px solid var(--cobalt-border);
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-result.show {
+  display: flex;
+}
+
+.modal-result code {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: #FFFFFF;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.confirm-address {
+  margin-top: 16px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: #FECACA;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  word-break: break-all;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* Tablet / Narrow Desktop Reader Split */
+@media (max-width: 1080px) {
+  body.mode1-glass {
+    padding: 16px;
+  }
+  .app-shell {
+    width: calc(100vw - 32px);
+    height: calc(100dvh - 32px);
+  }
+  .inbox-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .inbox-split:not(.reading-open) .reader-pane {
+    display: none;
+  }
+  .inbox-split.reading-open .stream-pane {
+    display: none;
+  }
+  .mobile-back-btn {
+    display: inline-flex;
+  }
+}
+
+/* =================================================================
+   FLAGSHIP FULL-FEATURED MOBILE GLASS OS (<= 860px)
+   ================================================================= */
+@media (max-width: 860px) {
+  body.mode1-glass {
+    padding: 8px;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-shell {
+    width: 100%;
+    flex: 1;
+    height: auto;
+    min-height: 0;
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    background: rgba(8, 10, 18, var(--glass-alpha));
+    backdrop-filter: saturate(165%) blur(var(--glass-blur));
+    -webkit-backdrop-filter: saturate(165%) blur(var(--glass-blur));
+    overflow: hidden;
+  }
+
+  /* Flagship Mobile Top Glass Bar */
+  .mob-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    height: 50px;
+    padding: 0 14px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(8, 10, 18, 0.45);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 45;
+  }
+
+  .mob-brand-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .mob-domain-pill {
+    height: 25px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    background: rgba(255, 255, 255, 0.06);
+    color: #B4C8FF;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 132px;
+    cursor: pointer;
+  }
+
+  .mob-domain-pill span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mob-top-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .mob-icon-refresh {
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    padding: 0;
+    border-radius: 8px;
+  }
+
+  /* Active Mailbox Flagship Hero Card inside Inbox Stream */
+  .stream-head {
+    display: none;
+  }
+
+  .mob-hero-card {
+    display: block;
+    margin: 12px 12px 4px;
+    padding: 14px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(0, 56, 255, 0.28), rgba(16, 24, 54, 0.66) 55%, rgba(10, 14, 28, 0.78));
+    border: 1px solid rgba(77, 124, 255, 0.52);
+    box-shadow: 0 14px 34px -10px rgba(0, 56, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+  }
+
+  .mob-hero-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .mob-hero-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #B8CCFF;
+  }
+
+  .mob-switch-box-btn {
+    border: 0;
+    background: transparent;
+    color: rgba(245, 246, 250, 0.72);
+    font-family: inherit;
+    font-size: 11.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+  }
+
+  .mob-hero-addr {
+    margin-top: 6px;
+    font-size: 15.5px;
+    font-weight: 600;
+    color: #FFFFFF;
+    letter-spacing: -0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mob-hero-actions {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .mob-hero-actions button {
+    min-height: 33px;
+    height: 33px;
+    padding: 0 8px;
+    border-radius: 10px;
+    font-size: 11.5px;
+  }
+
+  .icon-rail {
+    display: none;
+  }
+
+  /* View Switching via data-mob-tab */
+  .app-shell:not([data-mob-tab="boxes"]) .app-rail {
+    display: none;
+  }
+
+  .app-shell[data-mob-tab="boxes"] .main-stage {
+    display: none;
+  }
+
+  .app-shell[data-mob-tab="boxes"] .app-rail {
+    display: flex !important;
+    flex: 1;
+    min-height: 0;
+    border-right: 0;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    padding: 12px 14px 6px;
+  }
+
+  .app-rail .rail-top-head,
+  .app-rail .create-btn-pair {
+    display: none;
+  }
+
+  .rail-mailboxes-wrap {
+    max-height: none;
+  }
+
+  .mailbox-actions {
+    opacity: 1;
+  }
+
+  .main-stage {
+    flex: 1;
+    min-height: 0;
+    background: transparent;
+  }
+
+  .stream-pane,
+  .reader-pane,
+  .amelu-view,
+  .passwords-view,
+  #view-api {
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-right: 0;
+  }
+
+  /* Mobile Sub-Switcher Bar for Keys / API / Logout */
+  .app-shell[data-mob-tab="keys"] .mob-keys-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px 0;
+    flex-shrink: 0;
+  }
+
+  .detail-toolbar {
+    padding: 10px 14px;
+  }
+
+  .detail-header-meta {
+    padding: 14px 16px 12px;
+  }
+
+  .detail-scroll {
+    padding: 14px 16px 20px;
+  }
+
+  .amelu-scroll,
+  .passwords-scroll,
+  .api-scroll {
+    padding: 14px 14px 20px;
+  }
+
+  .api-bento-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Floating Specular Glass Bottom Dock */
+  .mob-floating-dock {
+    display: grid;
+    grid-template-columns: 1fr 1fr 56px 1fr 1fr;
+    align-items: center;
+    margin: 4px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    height: 58px;
+    padding: 0 6px;
+    border-radius: 22px;
+    background: rgba(10, 13, 24, 0.8);
+    backdrop-filter: saturate(180%) blur(24px);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 40;
+  }
+
+  .mob-floating-dock.is-operator {
+    grid-template-columns: 1fr 1fr 56px 1fr;
+  }
+
+  .mob-dock-tab {
+    height: 44px;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: rgba(245, 246, 250, 0.52);
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 500;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    transition: color 150ms ease, background-color 150ms ease;
+  }
+
+  .mob-dock-tab.active {
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.085);
+  }
+
+  .mob-dock-tab.active svg {
+    color: #6B93FF;
+    filter: drop-shadow(0 0 6px rgba(56, 107, 255, 0.65));
+  }
+
+  .mob-dock-fab {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    margin: 0 auto;
+    padding: 0;
+    border-radius: 15px;
+  }
+
+  /* iOS Bottom Sheet Modals on Mobile */
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-21 {
+    width: 100%;
+    max-width: none;
+    border-radius: 26px 26px 0 0;
+    padding: 20px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    border-bottom: 0;
+  }
+}
+</style>
+</head>
+<body class="mode1-glass">
+<canvas id="cobalt-waves" class="mode1-shader-bg" data-mode="window" aria-hidden="true"></canvas>
+<div class="toast-21" id="toast"></div>
+
+<!-- Create Mailbox Modal -->
+<div class="modal-overlay" id="create-modal" onclick="if(event.target===this)closeCreateModal()">
+  <div class="modal-21">
+    <h3>新建临时邮箱</h3>
+    <p>可指定自定义前缀，或留空自动生成随机地址。</p>
+    <label class="modal-label" for="m-custom">地址前缀（可选）</label>
+    <input id="m-custom" class="input-21 mono" type="text" placeholder="例如 signup-test，留空随机生成">
+    <div class="time-grid" role="group" aria-label="有效时长">
+      <div class="time-option" data-hours="1" onclick="pickDuration(this)">
+        <div class="time-value">1</div>
+        <div class="time-label">小时</div>
+      </div>
+      <div class="time-option" data-hours="6" onclick="pickDuration(this)">
+        <div class="time-value">6</div>
+        <div class="time-label">小时</div>
+      </div>
+      <div class="time-option selected" data-hours="24" onclick="pickDuration(this)">
+        <div class="time-value">24</div>
+        <div class="time-label">小时</div>
+      </div>
+      <div class="time-option" data-hours="72" onclick="pickDuration(this)">
+        <div class="time-value">3</div>
+        <div class="time-label">天</div>
+      </div>
+      <div class="time-option" data-hours="0" onclick="pickDuration(this)">
+        <div class="time-value">∞</div>
+        <div class="time-label">永久</div>
+      </div>
+    </div>
+    <div class="modal-result" id="m-result">
+      <code id="m-address"></code>
+      <button class="icon-btn" type="button" onclick="copyText(document.getElementById('m-address').textContent)">复制</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" type="button" style="flex:1" onclick="closeCreateModal()">关闭</button>
+      <button class="btn-primary" id="btn-go" type="button" style="flex:1" onclick="createMailbox()">创建邮箱</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Mailbox Modal -->
+<div class="modal-overlay" id="delete-modal" onclick="if(event.target===this)closeDeleteModal()">
+  <div class="modal-21">
+    <h3>删除这个邮箱？</h3>
+    <p>该地址及其名下全部本地邮件将一并移除（不影响 Amelu 远端原件）。</p>
+    <div class="confirm-address" id="delete-address"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" type="button" style="flex:1" onclick="closeDeleteModal()">取消</button>
+      <button class="btn-danger" id="btn-delete-confirm" type="button" style="flex:1" onclick="confirmDeleteMailbox()">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<div class="app-shell" id="app-shell" data-active-tab="inbox" data-mob-tab="inbox">
+  <!-- Flagship Mobile Top Glass Header -->
+  <header class="mob-top-bar">
+    <div class="mob-brand-left">
+      <a class="brand-21" href="/admin" onclick="event.preventDefault();switchMobileTab('inbox')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="2" y="2" width="9" height="9" rx="2.3" fill="#FFFFFF"/>
+          <rect x="13" y="2" width="9" height="9" rx="2.3" fill="#0038FF"/>
+          <rect x="2" y="13" width="9" height="9" rx="2.3" fill="rgba(255,255,255,0.34)"/>
+          <rect x="13" y="13" width="9" height="9" rx="2.3" fill="#FFFFFF"/>
+        </svg>
+        <span class="brand-21-name" style="font-size:14px">SNOWMAIL</span>
+      </a>
+      <button class="mob-domain-pill" type="button" onclick="switchMobileTab('boxes');setTimeout(()=>document.getElementById('domain-trigger')?.click(),50)">
+        <span id="mob-domain-text">@-</span>
+        <span style="opacity:0.5">⌄</span>
+      </button>
+    </div>
+
+    <div class="mob-top-right">
+      <div id="mob-opacity-slot" class="sm-opacity-anchor"></div>
+      <button class="icon-btn mob-icon-refresh" type="button" title="同步刷新" onclick="refreshAll().then(()=>toast('已同步最新数据'))">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Option C: Far-Left 58px Dedicated Glowing Icon Rail -->
+  <nav class="icon-rail" aria-label="后台视图切换">
+    <div class="icon-rail-top">
+      <a class="brand-21" href="/admin" title="SnowMail" onclick="event.preventDefault();switchTab('inbox')">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="2" y="2" width="9" height="9" rx="2.3" fill="#FFFFFF"/>
+          <rect x="13" y="2" width="9" height="9" rx="2.3" fill="#0038FF"/>
+          <rect x="2" y="13" width="9" height="9" rx="2.3" fill="rgba(255,255,255,0.34)"/>
+          <rect x="13" y="13" width="9" height="9" rx="2.3" fill="#FFFFFF"/>
+        </svg>
+      </a>
+
+      <div class="icon-rail-divider" aria-hidden="true"></div>
+
+      <button class="rail-icon-btn active" id="tab-inbox" type="button" data-tip="收件工作台" aria-label="收件工作台" onclick="switchTab('inbox')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+        </svg>
+      </button>
+
+      <button class="rail-icon-btn" id="tab-amelu" type="button" data-admin-only hidden data-tip="Amelu 邮局接入" aria-label="Amelu 邮局接入" onclick="switchTab('amelu')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+      </button>
+
+      <button class="rail-icon-btn" id="tab-passwords" type="button" data-admin-only hidden data-tip="AI 操作密码" aria-label="AI 操作密码" onclick="switchTab('passwords')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+        </svg>
+      </button>
+
+      <button class="rail-icon-btn" id="tab-api" type="button" data-tip="API 接入指南" aria-label="API 接入指南" onclick="switchTab('api')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="icon-rail-bottom">
+      <div class="icon-role-dot" id="icon-role-wrap" data-tip="核验中">
+        <span class="lime-dot pulse"></span>
+        <span id="access-role" class="sr-only" aria-live="polite">核验中</span>
+      </div>
+
+      <div id="admin-opacity-slot" class="sm-opacity-anchor"></div>
+
+      <button class="rail-icon-btn" type="button" data-tip="同步刷新" aria-label="同步刷新" onclick="refreshAll().then(()=>toast('已同步最新数据'))">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/>
+        </svg>
+      </button>
+
+      <button class="rail-icon-btn" type="button" data-tip="退出登录" aria-label="退出登录" onclick="logoutAdmin()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Second Column: Pure Mailbox List Rail (No clutter, Search directly above Mailboxes!) -->
+  <aside class="app-rail">
+    <div class="rail-top-head">
+      <span class="brand-21-name" style="font-size:13.5px;letter-spacing:-0.01em;">SNOWMAIL</span>
+      <span class="domain-chip-mini" id="domain-label">-</span>
+    </div>
+
+    <div class="rail-stats">
+      <div class="rail-stat">
+        <div class="rail-stat-val" id="stat-mailboxes">0</div>
+        <div class="rail-stat-lbl">邮箱</div>
+      </div>
+      <div class="rail-stat">
+        <div class="rail-stat-val" id="stat-emails">0</div>
+        <div class="rail-stat-lbl">邮件</div>
+      </div>
+      <div class="rail-stat">
+        <div class="rail-stat-val" id="stat-permanent">0</div>
+        <div class="rail-stat-lbl">永久</div>
+      </div>
+    </div>
+
+    <div class="domain-row">
+      <div class="domain-dropdown" id="domain-dropdown">
+        <button class="domain-trigger" id="domain-trigger" type="button" onclick="toggleDomainMenu(event)">
+          <span id="domain-current">选择域名</span>
+          <span class="domain-arrow">⌄</span>
+        </button>
+        <div class="domain-menu" id="domain-menu"></div>
+      </div>
+    </div>
+
+    <div class="create-btn-pair">
+      <button class="btn-primary" type="button" style="min-height:36px;padding:0 12px;font-size:13px;" onclick="openCreateModal()">
+        + 新建邮箱
+      </button>
+      <button class="btn-secondary" type="button" style="min-height:36px;padding:0 11px;font-size:12.5px;" title="一键随机闪建 24h 邮箱并复制" onclick="quickCreateMailbox()">
+        闪建
+      </button>
+    </div>
+
+    <div class="rail-search-wrap">
+      <input id="search" class="rail-search" type="search" placeholder="搜索邮箱地址..." oninput="renderMailboxes()">
+      <span class="kbd-21 rail-search-kbd">⌘K</span>
+    </div>
+
+    <div class="rail-mailboxes-wrap">
+      <div class="rail-section-label">
+        <span>当前域名地址</span>
+        <button class="mb-act" type="button" data-admin-only hidden onclick="switchTab('amelu');document.getElementById('amelu-key').focus()">+ 域名</button>
+      </div>
+      <div class="mailbox-list" id="mailbox-list"></div>
+    </div>
+  </aside>
+
+  <!-- Right Main Content Stage -->
+  <main class="main-stage">
+    <!-- Mobile Sub-Toolbar for Keys / API / Logout -->
+    <div class="mob-keys-bar">
+      <div class="seg-bar">
+        <button class="seg-item active" id="mob-sub-pw" type="button" data-admin-only hidden onclick="switchTab('passwords')">AI 密码</button>
+        <button class="seg-item" id="mob-sub-api" type="button" onclick="switchTab('api')">API 指南</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="cobalt-tag" id="mob-role-tag">核验中</span>
+        <button class="btn-danger" type="button" style="min-height:30px;padding:0 10px;font-size:11.5px;border-radius:8px;" onclick="logoutAdmin()">退出</button>
+      </div>
+    </div>
+
+    <!-- TAB 1: Inbox Split Workspace -->
+    <section class="tab-surface active" id="surface-inbox">
+      <div class="inbox-split" id="inbox-grid">
+        <!-- Middle Message Stream -->
+        <div class="stream-pane" id="view-inbox">
+          <!-- Flagship Mobile Active Mailbox Hero Card -->
+          <div class="mob-hero-card">
+            <div class="mob-hero-top">
+              <span class="mob-hero-status">
+                <span class="lime-dot pulse"></span>
+                <span id="mob-hero-meta">当前监听邮箱</span>
+              </span>
+              <button class="mob-switch-box-btn" type="button" onclick="switchMobileTab('boxes')">
+                <span>切换 (<span id="mob-box-count">0</span>)</span>
+                <span>›</span>
+              </button>
+            </div>
+            <div class="mob-hero-addr mono" id="mob-hero-addr">选择或闪建一个邮箱</div>
+            <div class="mob-hero-actions">
+              <button class="btn-secondary" type="button" onclick="if(state.selectedAddress){copyText(state.selectedAddress)}else{switchMobileTab('boxes')}">复制地址</button>
+              <button class="btn-secondary" type="button" onclick="if(state.selectedAddress){copyPublicShareLink()}else{toast('请先选择或闪建邮箱')}">分享单箱</button>
+              <button class="btn-primary" type="button" onclick="quickCreateMailbox()">一键闪建</button>
+            </div>
+          </div>
+
+          <div class="stream-head">
+            <span class="stream-addr" id="stream-title">选择左侧邮箱</span>
+            <div class="stream-actions" id="stream-actions" hidden>
+              <button class="icon-btn" type="button" onclick="copyText(state.selectedAddress)">复制地址</button>
+              <button class="icon-btn" type="button" onclick="copyPublicShareLink()">分享单箱</button>
+            </div>
+          </div>
+          <div class="stream-scroll" id="mail-list-view"></div>
+        </div>
+
+        <!-- Right Reading Pane -->
+        <div class="reader-pane" id="view-detail">
+          <div class="reader-empty" id="detail-empty">
+            <div class="reader-empty-badge" aria-hidden="true">✦</div>
+            <h3>实时收件阅读台</h3>
+            <p>点选左侧任意邮箱与信件，即可同屏阅读正文并一键提取复制验证码。</p>
+          </div>
+
+          <div class="reader-content" id="detail-content">
+            <div class="detail-toolbar">
+              <div class="toolbar-left">
+                <button class="icon-btn mobile-back-btn" type="button" onclick="backToList()">← 返回列表</button>
+                <div class="seg-bar" role="tablist" aria-label="邮件预览模式">
+                  <button class="seg-item active" id="preview-text" type="button" onclick="switchPreview('text')">纯文本</button>
+                  <button class="seg-item" id="preview-html" type="button" onclick="switchPreview('html')">HTML</button>
+                  <button class="seg-item" id="preview-raw" type="button" onclick="switchPreview('raw')">源码</button>
+                </div>
+                <div class="seg-bar" id="html-vp-toggle" hidden aria-label="HTML 视口宽度">
+                  <button class="seg-item active" id="vp-desktop" type="button" onclick="setHtmlViewport('desktop')">桌面宽</button>
+                  <button class="seg-item" id="vp-mobile" type="button" onclick="setHtmlViewport('mobile')">手机宽</button>
+                </div>
+              </div>
+              <div class="toolbar-right">
+                <button class="icon-btn" type="button" onclick="copyCurrentRaw()">复制原文</button>
+                <button class="btn-danger" type="button" data-admin-only hidden style="min-height:30px;padding:0 10px;font-size:12px;border-radius:8px;" onclick="deleteCurrentEmail()">删除</button>
+              </div>
+            </div>
+
+            <div class="detail-header-meta">
+              <div class="detail-subject" id="detail-subject"></div>
+              <div class="detail-meta">
+                <span>FROM <strong id="detail-from"></strong></span>
+                <span>TO <strong id="detail-to"></strong></span>
+                <span id="detail-time"></span>
+              </div>
+            </div>
+
+            <div class="detail-scroll">
+              <div id="admin-otp-slot"></div>
+              <div class="detail-body" id="detail-text"></div>
+              <div class="html-frame-wrap" id="detail-html-wrap">
+                <iframe class="html-frame" id="detail-html" sandbox="" title="安全沙箱邮件预览"></iframe>
+              </div>
+              <div class="raw-box" id="detail-raw"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Amelu Integration -->
+    <section class="tab-surface amelu-view" id="view-amelu" data-admin-only hidden>
+      <div class="amelu-scroll">
+        <div class="amelu-grid">
+          <div class="amelu-col">
+            <div class="amelu-card">
+              <span class="cobalt-tag">HTTPS 同步收信</span>
+              <h2 style="margin-top:12px">接入 Amelu 域名</h2>
+              <p class="amelu-help">无需开放服务器入站 25 端口，连接已在 Amelu 配置好收信 DNS 的域名即可创建临时地址。</p>
+
+              <form id="amelu-discover-form" class="amelu-form">
+                <label for="amelu-key">Amelu API Key</label>
+                <div class="amelu-input-row">
+                  <input id="amelu-key" class="input-21" type="password" autocomplete="off" spellcheck="false" required placeholder="粘贴具备管理邮箱与读信权限的 API Key">
+                  <button class="btn-primary" id="amelu-discover" type="submit">读取域名</button>
+                </div>
+                <p class="amelu-help">密钥使用 AES-256-GCM 加密保存在服务器端，不会回传浏览器。</p>
+              </form>
+
+              <p id="amelu-notice" class="amelu-notice" role="status" aria-live="polite"></p>
+
+              <form id="amelu-connect-form" class="amelu-form" hidden>
+                <label for="amelu-domain">选择要接入的域名</label>
+                <select id="amelu-domain" class="select-21" required></select>
+                <p id="amelu-domain-info" class="amelu-help"></p>
+
+                <label for="amelu-routing">邮件分配方式</label>
+                <select id="amelu-routing" class="select-21">
+                  <option value="review">每封人工确认后分配（默认安全模式）</option>
+                  <option value="headers">按信头 To/Cc/Bcc 单地址自动分配</option>
+                </select>
+                <p class="amelu-help">REST 接口不包含原始 SMTP 投递信封。默认先放入右侧「待分配邮件」，确认后再投递到目标地址。</p>
+
+                <label id="amelu-risk-wrap" class="amelu-check" hidden>
+                  <input id="amelu-risk" type="checkbox">
+                  <span>这些临时邮箱仅由我自己使用。我理解信头地址可能被伪造，多收件人或缺失地址的邮件仍会进入待分配列表。</span>
+                </label>
+                <label class="amelu-check">
+                  <input id="amelu-confirm" type="checkbox" required>
+                  <span id="amelu-setup-copy">我确认以上收信设置。</span>
+                </label>
+                <div class="amelu-actions">
+                  <button id="amelu-connect" type="submit" class="btn-primary">确认接入</button>
+                  <button id="amelu-cancel" type="button" class="btn-secondary">取消</button>
+                </div>
+              </form>
+            </div>
+
+            <section class="amelu-card" aria-labelledby="amelu-connections-title">
+              <div class="amelu-section-head">
+                <h3 id="amelu-connections-title">已接入域名</h3>
+                <button id="amelu-refresh" type="button" class="btn-secondary" style="min-height:32px;padding:0 12px;font-size:12px;">刷新状态</button>
+              </div>
+              <p class="amelu-help">暂停仅停止本地同步，不会删除或修改 Amelu 远端原件。</p>
+              <div id="amelu-connections"></div>
+            </section>
+          </div>
+
+          <div class="amelu-col">
+            <section class="amelu-card" aria-labelledby="amelu-pending-title">
+              <div class="amelu-section-head">
+                <h3 id="amelu-pending-title">待分配邮件 <span id="amelu-pending-count" class="cobalt-tag">0</span></h3>
+              </div>
+              <p class="amelu-help">这些邮件仅主管理员可见。选择收信前已创建且有效的同域名邮箱即可投递入箱，或直接忽略。</p>
+              <div id="amelu-pending"></div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: AI Operator Passwords -->
+    <section class="tab-surface passwords-view" id="view-passwords" data-admin-only hidden>
+      <div class="passwords-scroll">
+        <div class="passwords-grid">
+          <div class="passwords-col">
+            <div class="passwords-card">
+              <span class="cobalt-tag">Scoped Agent Credentials</span>
+              <h2 style="margin-top:12px">签发 AI 操作密码</h2>
+              <p class="passwords-help">为每个 AI Agent 或协作者单独生成受限操作密码，无需共享主管理员密码，随时可独立撤销。</p>
+              <p class="passwords-permissions">可用权限：创建与删除临时邮箱、列出邮箱、读取邮件正文与长轮询等待新邮件。禁止管理密码与修改 Amelu 设置。</p>
+
+              <form id="access-create-form" class="passwords-form">
+                <label for="access-label">用途备注</label>
+                <div class="passwords-input-row">
+                  <input id="access-label" class="input-21" name="label" maxlength="60" required autocomplete="off" placeholder="例如：自动化注册测试 AI">
+                  <button id="access-create" class="btn-primary" type="submit">创建操作密码</button>
+                </div>
+              </form>
+
+              <p id="access-notice" class="passwords-notice" role="status" aria-live="polite"></p>
+
+              <section id="access-created" class="passwords-created" hidden aria-labelledby="access-created-title">
+                <h3 id="access-created-title">新操作密码已生成</h3>
+                <p class="passwords-help">密码仅在本次创建后展示，数据库仅存单向哈希。关闭后无法再次查看。</p>
+                <label for="access-secret">操作密码</label>
+                <input id="access-secret" class="input-21 mono" type="text" readonly autocomplete="off" spellcheck="false">
+                <div class="passwords-actions">
+                  <button id="access-copy" class="btn-primary" type="button" style="min-height:36px;padding:0 14px;font-size:12.5px;">复制密码</button>
+                  <button id="access-copy-instructions" class="btn-secondary" type="button" style="min-height:36px;padding:0 14px;font-size:12.5px;">复制给 AI 的接入信息</button>
+                  <button id="access-dismiss" class="btn-secondary" type="button" style="min-height:36px;padding:0 14px;font-size:12.5px;">已保存，关闭</button>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <div class="passwords-col">
+            <div class="passwords-card">
+              <div class="passwords-list-heading">
+                <h3>已创建的密码</h3>
+                <button id="access-refresh" class="btn-secondary" type="button" style="min-height:32px;padding:0 12px;font-size:12px;">刷新列表</button>
+              </div>
+              <p class="passwords-help">撤销后，对应的 API 请求、网页会话及正在挂起等待新邮件的连接会在 2 秒内立即终止。</p>
+              <div id="access-password-list" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: API Reference -->
+    <section class="tab-surface" id="view-api">
+      <div class="api-scroll">
+        <div class="api-head-card">
+          <div>
+            <span class="cobalt-tag">REST Automation</span>
+            <h2 style="margin-top:10px">API 接入指南</h2>
+            <p>外部脚本与 AI Agent 可通过请求头 <code>Authorization: Bearer &lt;密码&gt;</code> 或 <code>x-api-key</code> 调用接口。</p>
+          </div>
+          <div class="api-base-pill">
+            <code id="api-base"></code>
+            <button class="icon-btn" type="button" onclick="copyText(location.origin)">复制 Base URL</button>
+          </div>
+        </div>
+
+        <div class="api-bento-grid">
+          <div class="api-tile">
+            <div>
+              <div class="api-tile-top">
+                <span class="http-badge post">POST</span>
+                <code>/api/generate</code>
+              </div>
+              <p style="margin-top:10px">创建随机或自定义前缀邮箱，支持设置所属域名与有效时长（<code>0</code> 表示永久有效）。</p>
+            </div>
+            <button class="btn-secondary" type="button" style="align-self:flex-start;min-height:34px;font-size:12.5px;" onclick="copyCurlExample('generate')">复制请求体示例</button>
+          </div>
+
+          <div class="api-tile">
+            <div>
+              <div class="api-tile-top">
+                <span class="http-badge get">GET</span>
+                <code>/api/mailbox/:address/wait?timeout=30</code>
+              </div>
+              <p style="margin-top:10px">阻塞长轮询等待指定邮箱的新来信，收到邮件立即返回完整正文，适合自动化接码流程。</p>
+            </div>
+            <button class="btn-secondary" type="button" style="align-self:flex-start;min-height:34px;font-size:12.5px;" onclick="copyCurlExample('wait')">复制调用路径</button>
+          </div>
+
+          <div class="api-tile">
+            <div>
+              <div class="api-tile-top">
+                <span class="http-badge get">GET</span>
+                <code>/api/mailboxes</code>
+              </div>
+              <p style="margin-top:10px">获取全部已创建临时邮箱及其各自的收件数量、创建时间与到期时间。</p>
+            </div>
+            <button class="btn-secondary" type="button" style="align-self:flex-start;min-height:34px;font-size:12.5px;" onclick="copyText(location.origin + '/api/mailboxes')">复制接口地址</button>
+          </div>
+
+          <div class="api-tile">
+            <div>
+              <div class="api-tile-top">
+                <span class="http-badge get">GET</span>
+                <code>/api/mailbox/:address</code>
+              </div>
+              <p style="margin-top:10px">查看指定邮箱的邮件列表；配合 <code>GET /api/email/:id</code> 读取完整文本与 HTML 内容。</p>
+            </div>
+            <button class="btn-secondary" type="button" style="align-self:flex-start;min-height:34px;font-size:12.5px;" onclick="copyText(location.origin + '/api/mailbox/')">复制接口前缀</button>
+          </div>
+
+          <div class="api-tile">
+            <div>
+              <div class="api-tile-top">
+                <span class="http-badge delete">DELETE</span>
+                <code>/api/mailboxes/:address</code>
+              </div>
+              <p style="margin-top:10px">删除指定临时邮箱及其名下全部本地邮件记录。</p>
+            </div>
+            <button class="btn-secondary" type="button" style="align-self:flex-start;min-height:34px;font-size:12.5px;" onclick="copyText(location.origin + '/api/mailboxes/')">复制接口前缀</button>
+          </div>
+
+          <div class="api-tile">
+            <div>
+              <div class="api-tile-top">
+                <span class="http-badge get">GET</span>
+                <code>/api/config</code>
+              </div>
+              <p style="margin-top:10px">读取当前站点已启用的全部收信域名列表与默认域名。</p>
+            </div>
+            <button class="btn-secondary" type="button" style="align-self:flex-start;min-height:34px;font-size:12.5px;" onclick="copyText(location.origin + '/api/config')">复制接口地址</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Flagship Mobile Floating Specular Glass Bottom Dock -->
+  <nav class="mob-floating-dock" id="mob-dock" aria-label="移动端底部导航">
+    <button class="mob-dock-tab active" id="mdock-inbox" type="button" onclick="switchMobileTab('inbox')">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+      </svg>
+      <span>收件</span>
+    </button>
+
+    <button class="mob-dock-tab" id="mdock-boxes" type="button" onclick="switchMobileTab('boxes')">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+      </svg>
+      <span id="mdock-boxes-label">邮箱</span>
+    </button>
+
+    <button class="btn-primary mob-dock-fab" type="button" title="新建临时邮箱" onclick="openCreateModal()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>
+
+    <button class="mob-dock-tab" id="mdock-amelu" type="button" data-admin-only hidden onclick="switchMobileTab('amelu')">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>
+      <span>邮局</span>
+    </button>
+
+    <button class="mob-dock-tab" id="mdock-keys" type="button" onclick="switchMobileTab('keys')">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+      </svg>
+      <span id="mdock-keys-label">密钥</span>
+    </button>
+  </nav>
+</div>
+
+<script>
+const API = location.origin;
+const state = {
+  role: '',
+  config: { domain: '', domains: [] },
+  mailboxes: [],
+  emails: [],
+  activeRequests: 0,
+  selectedDomain: '',
+  activeTab: 'inbox',
+  selectedAddress: '',
+  selectedEmail: null,
+  previewMode: 'text',
+  htmlViewport: 'desktop',
+  generatedAddress: '',
+  durationHours: 24,
+  pendingDeleteAddress: '',
+  hasLoadedShell: false,
+  codeCache: {},
+};
+
+document.getElementById('api-base').textContent = location.origin;
+
+function requestHeaders(json = false) {
+  const headers = {};
+  if (json) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return headers;
+}
+
+async function apiFetch(path, options = {}) {
+  state.activeRequests += 1;
+  const init = {
+    credentials: 'same-origin',
+    ...options,
+    cache: 'no-store',
+    headers: {
+      ...requestHeaders(false),
+      ...(options.headers || {}),
+    },
+  };
+
+  try {
+    const response = await fetch(`${API}${path}`, init);
+    const contentType = response.headers.get('content-type') || '';
+    const payload = contentType.includes('application/json') ? await response.json() : await response.text();
+
+    if (!response.ok) {
+      const message = typeof payload === 'string' ? payload : payload.error || '请求失败';
+      throw Object.assign(new Error(message), { status: response.status });
+    }
+
+    return payload;
+  } finally {
+    state.activeRequests = Math.max(0, state.activeRequests - 1);
+  }
+}
+
+function toast(message) {
+  const el = document.getElementById('toast');
+  el.textContent = message;
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function escapeHtml(value) {
+  const div = document.createElement('div');
+  div.textContent = value || '';
+  return div.innerHTML;
+}
+
+function getMailboxDomain(address) {
+  const value = String(address || '').toLowerCase();
+  const at = value.lastIndexOf('@');
+  return at === -1 ? '' : value.slice(at + 1);
+}
+
+function getKnownDomains() {
+  const configured = Array.isArray(state.config.domains) ? state.config.domains : [];
+  const fromMailboxes = state.mailboxes.map(item => getMailboxDomain(item.address)).filter(Boolean);
+  return [...new Set([...configured, ...fromMailboxes].map(item => String(item).toLowerCase()).filter(Boolean))];
+}
+
+function renderDomainOptions() {
+  const current = document.getElementById('domain-current');
+  const menu = document.getElementById('domain-menu');
+  if (!current || !menu) return;
+
+  const domains = getKnownDomains();
+  if (!domains.includes(state.selectedDomain)) {
+    state.selectedDomain = domains[0] || state.config.domain || '';
+  }
+
+  current.textContent = state.selectedDomain ? `@${state.selectedDomain}` : '请先接入域名';
+  menu.innerHTML = domains
+    .map(domain => `
+      <button class="domain-option${domain === state.selectedDomain ? ' active' : ''}" type="button" data-domain="${escapeHtml(domain)}">
+        <span>@${escapeHtml(domain)}</span>
+      </button>
+    `)
+    .join('');
+  menu.querySelectorAll('.domain-option').forEach(button => {
+    button.addEventListener('click', () => selectDomain(button.dataset.domain));
+  });
+  document.getElementById('domain-label').textContent = state.selectedDomain || '未接入域名';
+  const mobDomain = document.getElementById('mob-domain-text');
+  if (mobDomain) mobDomain.textContent = state.selectedDomain ? `@${state.selectedDomain}` : '未接入';
+}
+
+function toggleDomainMenu(event) {
+  event.stopPropagation();
+  const trigger = document.getElementById('domain-trigger');
+  const menu = document.getElementById('domain-menu');
+  if (!trigger || !menu) return;
+  const isOpen = menu.classList.toggle('show');
+  trigger.classList.toggle('open', isOpen);
+}
+
+function closeDomainMenu() {
+  document.getElementById('domain-menu')?.classList.remove('show');
+  document.getElementById('domain-trigger')?.classList.remove('open');
+}
+
+function selectDomain(domain) {
+  state.selectedDomain = String(domain || '').toLowerCase();
+  closeDomainMenu();
+  if (state.selectedAddress && getMailboxDomain(state.selectedAddress) !== state.selectedDomain) {
+    state.selectedAddress = '';
+    state.selectedEmail = null;
+    state.emails = [];
+    syncReaderVisibility();
+    renderMailList();
+  }
+  renderDomainOptions();
+  renderMailboxes();
+}
+
+function copyText(value, customToast) {
+  if (!value) {
+    toast('没有可复制的内容');
+    return;
+  }
+  const notify = () => toast(customToast || '已复制到剪贴板');
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(value).then(notify).catch(() => fallbackCopy(value, notify));
+    return;
+  }
+  fallbackCopy(value, notify);
+}
+
+function fallbackCopy(value, notify) {
+  const input = document.createElement('textarea');
+  input.value = value;
+  input.style.position = 'fixed';
+  input.style.left = '-9999px';
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand('copy');
+  document.body.removeChild(input);
+  if (notify) notify();
+}
+
+function copyPublicShareLink() {
+  if (!state.selectedAddress) return;
+  const link = `${location.origin}/mailbox.html?address=${encodeURIComponent(state.selectedAddress)}`;
+  copyText(link, '公开单邮箱链接已复制');
+}
+
+function copyCurlExample(kind) {
+  const domain = state.selectedDomain || state.config.domain || 'example.com';
+  if (kind === 'generate') {
+    copyText(JSON.stringify({ custom: 'demo-box', domain, retention_hours: 24 }), '创建邮箱 JSON 已复制');
+    return;
+  }
+  const addr = state.selectedAddress || `demo-box@${domain}`;
+  copyText(`${location.origin}/api/mailbox/${encodeURIComponent(addr)}/wait?timeout=30`, '等待新邮件接口已复制');
+}
+
+async function logoutAdmin() {
+  try {
+    await fetch(`${API}/api/admin/logout`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+  } catch (error) {
+  }
+  window.location.href = '/';
+}
+
+function handleAdminError(error) {
+  const message = error?.message || '请求失败';
+  if (
+    error?.status === 401 ||
+    message.includes('Admin login required') ||
+    message.includes('Invalid API key') ||
+    message.includes('Invalid password')
+  ) {
+    toast('登录状态已失效，正在返回登录页');
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 500);
+    return true;
+  }
+  return false;
+}
+
+function syncReaderVisibility() {
+  const hasMail = Boolean(state.selectedEmail);
+  document.getElementById('detail-empty').style.display = hasMail ? 'none' : 'flex';
+  document.getElementById('detail-content').classList.toggle('active', hasMail);
+  document.getElementById('inbox-grid').classList.toggle('reading-open', hasMail);
+}
+
+function syncMobileDockUI(mobTab) {
+  const shell = document.getElementById('app-shell');
+  if (shell) shell.setAttribute('data-mob-tab', mobTab);
+  ['inbox', 'boxes', 'amelu', 'keys'].forEach(key => {
+    document.getElementById(`mdock-${key}`)?.classList.toggle('active', key === mobTab);
+  });
+}
+
+function switchMobileTab(mobTab) {
+  if (mobTab === 'boxes') {
+    syncMobileDockUI('boxes');
+    return;
+  }
+  if (mobTab === 'inbox') {
+    state.selectedEmail = null;
+    syncReaderVisibility();
+    switchTab('inbox');
+    syncMobileDockUI('inbox');
+    return;
+  }
+  if (mobTab === 'amelu') {
+    switchTab('amelu');
+    syncMobileDockUI('amelu');
+    return;
+  }
+  if (mobTab === 'keys') {
+    switchTab(state.role === 'admin' ? 'passwords' : 'api');
+    syncMobileDockUI('keys');
+  }
+}
+
+function syncMobileHeroCard() {
+  const addrEl = document.getElementById('mob-hero-addr');
+  const metaEl = document.getElementById('mob-hero-meta');
+  const countEl = document.getElementById('mob-box-count');
+  const dockBoxesLbl = document.getElementById('mdock-boxes-label');
+  const domainBoxes = state.mailboxes.filter(item => getMailboxDomain(item.address) === state.selectedDomain);
+  if (countEl) countEl.textContent = String(domainBoxes.length);
+  if (dockBoxesLbl) dockBoxesLbl.textContent = domainBoxes.length ? `邮箱(${domainBoxes.length})` : '邮箱';
+
+  if (!addrEl || !metaEl) return;
+  if (!state.selectedAddress) {
+    addrEl.textContent = '点右侧一键闪建或切换邮箱';
+    metaEl.textContent = '尚未选择监听邮箱';
+    return;
+  }
+  addrEl.textContent = state.selectedAddress;
+  const found = state.mailboxes.find(m => m.address === state.selectedAddress);
+  const exp = found ? getMailboxExpiry(found.expires_at).text : '实时监听';
+  metaEl.textContent = `当前监听邮箱 · ${exp}`;
+}
+
+function switchTab(tab) {
+  if (['amelu', 'passwords'].includes(tab) && state.role !== 'admin') {
+    toast('此功能仅主管理员可用');
+    return;
+  }
+  state.activeTab = tab;
+  document.getElementById('app-shell')?.setAttribute('data-active-tab', tab);
+  document.getElementById('tab-inbox').classList.toggle('active', tab === 'inbox');
+  document.getElementById('tab-amelu').classList.toggle('active', tab === 'amelu');
+  document.getElementById('tab-passwords').classList.toggle('active', tab === 'passwords');
+  document.getElementById('tab-api').classList.toggle('active', tab === 'api');
+
+  document.getElementById('surface-inbox').classList.toggle('active', tab === 'inbox');
+  document.getElementById('view-amelu').classList.toggle('active', tab === 'amelu');
+  document.getElementById('view-passwords').classList.toggle('active', tab === 'passwords');
+  document.getElementById('view-api').classList.toggle('active', tab === 'api');
+
+  document.getElementById('mob-sub-pw')?.classList.toggle('active', tab === 'passwords');
+  document.getElementById('mob-sub-api')?.classList.toggle('active', tab === 'api');
+
+  if (tab === 'inbox') syncMobileDockUI('inbox');
+  else if (tab === 'amelu') syncMobileDockUI('amelu');
+  else syncMobileDockUI('keys');
+
+  if (tab === 'passwords') window.AccessPasswords?.refresh();
+  if (tab === 'amelu') window.AmeluAdmin?.refresh();
+}
+
+function backToList() {
+  state.selectedEmail = null;
+  syncReaderVisibility();
+  renderMailList();
+}
+
+function pickDuration(button) {
+  document.querySelectorAll('.time-option').forEach(item => item.classList.remove('selected'));
+  button.classList.add('selected');
+  state.durationHours = Number(button.dataset.hours);
+}
+
+function openCreateModal() {
+  if (!state.config.domains.includes(state.selectedDomain)) {
+    toast(state.role === 'admin' ? '请先接入域名或恢复该域名同步' : '当前暂无可用收信域名');
+    if (state.role === 'admin') switchTab('amelu');
+    return;
+  }
+  state.generatedAddress = '';
+  document.getElementById('m-custom').value = '';
+  document.getElementById('m-result').classList.remove('show');
+  document.getElementById('btn-go').textContent = '创建邮箱';
+  document.getElementById('create-modal').classList.add('show');
+  setTimeout(() => document.getElementById('m-custom').focus(), 40);
+}
+
+function closeCreateModal() {
+  document.getElementById('create-modal').classList.remove('show');
+  if (state.generatedAddress) {
+    refreshAll();
+  }
+}
+
+async function quickCreateMailbox() {
+  if (!state.config.domains.includes(state.selectedDomain)) {
+    openCreateModal();
+    return;
+  }
+  try {
+    const data = await apiFetch('/api/generate', {
+      method: 'POST',
+      headers: requestHeaders(true),
+      body: JSON.stringify({
+        domain: state.selectedDomain,
+        retention_hours: 24,
+      }),
+    });
+    copyText(data.address, `已闪建并复制 ${data.address}`);
+    await refreshShellData();
+    await selectMailbox(data.address);
+  } catch (error) {
+    if (!handleAdminError(error)) toast(error.message || '快速创建失败');
+  }
+}
+
+async function createMailbox() {
+  const button = document.getElementById('btn-go');
+  if (state.generatedAddress) {
+    const target = state.generatedAddress;
+    closeCreateModal();
+    await selectMailbox(target);
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = '创建中...';
+
+  try {
+    const custom = document.getElementById('m-custom').value.trim();
+    const data = await apiFetch('/api/generate', {
+      method: 'POST',
+      headers: requestHeaders(true),
+      body: JSON.stringify({
+        custom: custom || undefined,
+        domain: state.selectedDomain,
+        retention_hours: state.durationHours,
+      }),
+    });
+    state.generatedAddress = data.address;
+    document.getElementById('m-address').textContent = data.address;
+    document.getElementById('m-result').classList.add('show');
+    button.textContent = '打开收件箱';
+    copyText(data.address, `已创建并复制 ${data.address}`);
+  } catch (error) {
+    if (handleAdminError(error)) return;
+    button.textContent = '创建邮箱';
+    toast(error.message || '创建失败');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function formatTime(ts) {
+  if (!ts) return '';
+  const date = new Date(/Z$|[+-]\d{2}:\d{2}$/.test(ts) ? ts : `${ts}Z`);
+  const diff = Date.now() - date.getTime();
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`;
+  return date.toLocaleString('zh-CN', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function getMailboxExpiry(expiresAt) {
+  if (!expiresAt) return { text: '永久', cls: 'dot-permanent' };
+  const diff = new Date(`${expiresAt}Z`) - Date.now();
+  if (diff <= 0) return { text: '已过期', cls: 'dot-expiring' };
+  const hours = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  if (hours >= 24) return { text: `${Math.floor(hours / 24)} 天后过期`, cls: 'dot-alive' };
+  if (hours > 0) return { text: `剩 ${hours} 小时`, cls: hours < 2 ? 'dot-expiring' : 'dot-alive' };
+  return { text: `剩 ${mins} 分钟`, cls: 'dot-expiring' };
+}
+
+function renderMailboxes() {
+  syncMobileHeroCard();
+  const search = document.getElementById('search').value.trim().toLowerCase();
+  const root = document.getElementById('mailbox-list');
+  const domainItems = state.mailboxes.filter(item => getMailboxDomain(item.address) === state.selectedDomain);
+  const items = search
+    ? domainItems.filter(item => item.address.toLowerCase().includes(search))
+    : domainItems;
+
+  if (!items.length) {
+    root.innerHTML = `
+      <div class="empty-state" style="min-height:120px">
+        <div>
+          <strong>暂无邮箱地址</strong>
+          点击上方「+ 新建邮箱」或「闪建」创建。
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  root.innerHTML = items.map(item => {
+    const expiry = getMailboxExpiry(item.expires_at);
+    const addr = escapeHtml(item.address);
+    return `
+      <div class="mailbox-item${state.selectedAddress === item.address ? ' active' : ''}" data-address="${addr}">
+        <div class="mb-dot ${expiry.cls}"></div>
+        <div class="mailbox-info">
+          <div class="mailbox-name">${addr}</div>
+          <div class="mailbox-meta">${item.email_count || 0} 封 · ${expiry.text}</div>
+        </div>
+        <div class="mailbox-actions">
+          <button class="mb-act" type="button" data-act="copy" data-address="${addr}">复制</button>
+          <button class="mb-act del" type="button" data-act="del" data-address="${addr}">删</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  root.querySelectorAll('.mailbox-item').forEach(row => {
+    row.addEventListener('click', event => {
+      const btn = event.target.closest('button[data-act]');
+      const address = row.dataset.address;
+      if (!btn) {
+        selectMailbox(address);
+        return;
+      }
+      event.stopPropagation();
+      if (btn.dataset.act === 'copy') copyText(address);
+      if (btn.dataset.act === 'del') deleteMailbox(address);
+    });
+  });
+}
+
+function renderMailList() {
+  syncMobileHeroCard();
+  const root = document.getElementById('mail-list-view');
+  const title = document.getElementById('stream-title');
+  const actions = document.getElementById('stream-actions');
+
+  if (!state.selectedAddress) {
+    title.textContent = '选择左侧邮箱';
+    actions.hidden = true;
+    root.innerHTML = `
+      <div class="empty-state">
+        <div>
+          <strong>先选择一个邮箱</strong>
+          选中地址或点击「闪建」后，这里会实时列出收到的邮件。
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  title.textContent = state.selectedAddress;
+  actions.hidden = false;
+
+  if (!state.emails.length) {
+    root.innerHTML = `
+      <div class="empty-state">
+        <div>
+          <strong>等待新邮件</strong>
+          发往 ${escapeHtml(state.selectedAddress)} 的信件会自动同步到这里。
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  root.innerHTML = state.emails.map(mail => {
+    const subjectCode = window.SnowMailUI
+      ? window.SnowMailUI.extractVerificationCode(mail.subject, '')
+      : '';
+    const code = state.codeCache[mail.id] || subjectCode;
+    const monogram = window.SnowMailUI
+      ? window.SnowMailUI.senderInitials(mail.sender)
+      : 'SM';
+    const isActive = state.selectedEmail && state.selectedEmail.id === mail.id;
+    return `
+      <div class="mail-card${isActive ? ' active' : ''}" data-mail-id="${mail.id}">
+        <div class="sender-monogram${code ? ' has-otp' : ''}">${escapeHtml(monogram)}</div>
+        <div class="mail-card-body">
+          <div class="mail-top">
+            <div class="mail-from">${escapeHtml(mail.sender)}</div>
+            <div class="mail-time">${formatTime(mail.received_at)}</div>
+          </div>
+          <div class="mail-subject">${escapeHtml(mail.subject || '(无主题)')}</div>
+          ${code ? `<div style="margin-top:8px"><span class="cobalt-tag">✦ 验证码 ${escapeHtml(code)}</span></div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  root.querySelectorAll('.mail-card').forEach(card => {
+    card.addEventListener('click', () => showMail(Number(card.dataset.mailId)));
+  });
+}
+
+function renderAdminOtp(code) {
+  const slot = document.getElementById('admin-otp-slot');
+  slot.replaceChildren();
+  if (!code) return;
+
+  const box = document.createElement('div');
+  box.className = 'otp-shimmer-card';
+  box.innerHTML = `
+    <div>
+      <div class="otp-label">已自动识别验证码</div>
+      <div class="otp-digits">${escapeHtml(code)}</div>
+    </div>
+  `;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-primary';
+  btn.style.minHeight = '36px';
+  btn.style.padding = '0 15px';
+  btn.style.fontSize = '12.5px';
+  btn.textContent = '一键复制验证码';
+  btn.onclick = () => copyText(code, `验证码 ${code} 已复制`);
+  box.appendChild(btn);
+  slot.appendChild(box);
+}
+
+function switchPreview(mode) {
+  state.previewMode = mode;
+  document.getElementById('preview-text').classList.toggle('active', mode === 'text');
+  document.getElementById('preview-html').classList.toggle('active', mode === 'html');
+  document.getElementById('preview-raw').classList.toggle('active', mode === 'raw');
+  document.getElementById('detail-text').style.display = mode === 'text' ? 'block' : 'none';
+  document.getElementById('detail-html-wrap').style.display = mode === 'html' ? 'flex' : 'none';
+  document.getElementById('detail-raw').style.display = mode === 'raw' ? 'block' : 'none';
+  document.getElementById('html-vp-toggle').hidden = mode !== 'html';
+}
+
+function setHtmlViewport(vp) {
+  state.htmlViewport = vp;
+  document.getElementById('vp-desktop').classList.toggle('active', vp === 'desktop');
+  document.getElementById('vp-mobile').classList.toggle('active', vp === 'mobile');
+  document.getElementById('detail-html').classList.toggle('mobile-vp', vp === 'mobile');
+}
+
+async function loadRawMail(id) {
+  try {
+    const raw = await apiFetch(`/api/email/${id}/raw`);
+    document.getElementById('detail-raw').textContent = raw || '(空)';
+  } catch (error) {
+    if (handleAdminError(error)) return;
+    document.getElementById('detail-raw').textContent = `原始邮件加载失败：${error.message}`;
+  }
+}
+
+function copyCurrentRaw() {
+  copyText(document.getElementById('detail-raw').textContent);
+}
+
+async function deleteCurrentEmail() {
+  if (!state.selectedEmail || state.role !== 'admin') return;
+  const id = state.selectedEmail.id;
+  try {
+    await apiFetch(`/api/email/${id}`, { method: 'DELETE' });
+    toast('该封邮件已删除');
+    state.selectedEmail = null;
+    syncReaderVisibility();
+    await refreshShellData();
+    await refreshSelectedMailbox();
+  } catch (error) {
+    if (!handleAdminError(error)) toast(error.message || '删除邮件失败');
+  }
+}
+
+async function fetchEmailDetail(id) {
+  return apiFetch(`/api/email/${id}`);
+}
+
+function showMail(id) {
+  const mail = state.emails.find(item => item.id === id);
+  if (!mail) return;
+
+  state.selectedEmail = { ...mail };
+  syncReaderVisibility();
+  renderMailList();
+  renderAdminOtp('');
+
+  document.getElementById('detail-subject').textContent = mail.subject || '(无主题)';
+  document.getElementById('detail-from').textContent = mail.sender || '';
+  document.getElementById('detail-to').textContent = mail.recipient || '';
+  document.getElementById('detail-time').textContent = formatTime(mail.received_at);
+  document.getElementById('detail-text').textContent = '正在加载邮件内容...';
+  document.getElementById('detail-html').srcdoc = '<p style="font-family:sans-serif;padding:24px;color:#555;">正在加载 HTML 内容...</p>';
+  document.getElementById('detail-raw').textContent = '正在加载原始邮件...';
+  switchPreview('text');
+  switchTab('inbox');
+
+  fetchEmailDetail(mail.id).then(fullMail => {
+    if (!state.selectedEmail || state.selectedEmail.id !== fullMail.id) return;
+    state.selectedEmail = fullMail;
+    const plainCandidate = fullMail.body_text || '';
+    const code = window.SnowMailUI
+      ? window.SnowMailUI.extractVerificationCode(fullMail.subject, plainCandidate)
+      : '';
+    if (code) {
+      state.codeCache[fullMail.id] = code;
+      renderMailList();
+    }
+    renderAdminOtp(code);
+    document.getElementById('detail-subject').textContent = fullMail.subject || '(无主题)';
+    document.getElementById('detail-from').textContent = fullMail.sender || '';
+    document.getElementById('detail-to').textContent = fullMail.recipient || '';
+    document.getElementById('detail-time').textContent = formatTime(fullMail.received_at);
+    document.getElementById('detail-text').textContent = fullMail.body_text || fullMail.body_html || '(无内容)';
+    document.getElementById('detail-html').srcdoc = fullMail.body_html || '<p style="font-family:sans-serif;padding:24px;color:#555;">这封邮件没有 HTML 内容。</p>';
+    if (!fullMail.body_text && fullMail.body_html) {
+      switchPreview('html');
+    }
+  }).catch(error => {
+    if (handleAdminError(error)) return;
+    document.getElementById('detail-text').textContent = `邮件内容加载失败：${error.message}`;
+    document.getElementById('detail-html').srcdoc = `<p style="font-family:sans-serif;padding:24px;">邮件内容加载失败：${escapeHtml(error.message)}</p>`;
+  });
+
+  loadRawMail(mail.id);
+}
+
+async function fetchConfig() {
+  const config = await apiFetch('/api/config');
+  state.config = config;
+  state.config.domains = Array.isArray(config.domains) ? config.domains : [];
+  if (!state.selectedDomain || !state.config.domains.includes(state.selectedDomain)) {
+    state.selectedDomain = config.domain || state.config.domains[0] || '';
+  }
+  renderDomainOptions();
+  document.title = `SnowMail · ${state.selectedDomain || config.domain || '后台'}`;
+}
+
+async function fetchAccess() {
+  const access = await apiFetch('/api/admin/session');
+  state.role = access.role;
+  document.querySelectorAll('[data-admin-only]').forEach(element => {
+    element.hidden = access.role !== 'admin';
+  });
+  const roleLabel = access.role === 'admin' ? '主管理员' : (access.label || '操作员');
+  document.getElementById('access-role').textContent = roleLabel;
+  document.getElementById('icon-role-wrap')?.setAttribute('data-tip', `当前身份：${roleLabel}`);
+  const mobRole = document.getElementById('mob-role-tag');
+  if (mobRole) mobRole.textContent = roleLabel;
+  document.getElementById('mob-dock')?.classList.toggle('is-operator', access.role !== 'admin');
+  const keysLbl = document.getElementById('mdock-keys-label');
+  if (keysLbl) keysLbl.textContent = access.role === 'admin' ? '密钥' : '指南';
+}
+
+async function fetchStats() {
+  const stats = await apiFetch('/api/stats');
+  document.getElementById('stat-mailboxes').textContent = stats.total_mailboxes || 0;
+  document.getElementById('stat-emails').textContent = stats.total_emails || 0;
+  document.getElementById('stat-permanent').textContent = stats.permanent || 0;
+}
+
+async function fetchMailboxes() {
+  const data = await apiFetch('/api/mailboxes');
+  state.mailboxes = data.mailboxes || [];
+  renderDomainOptions();
+  renderMailboxes();
+}
+
+async function fetchEmails(address) {
+  if (!address) {
+    state.emails = [];
+    renderMailList();
+    return;
+  }
+
+  const data = await apiFetch(`/api/mailbox/${encodeURIComponent(address)}`);
+  const previousCount = state.emails.length;
+  state.emails = data.emails || [];
+  renderMailList();
+
+  if (previousCount > 0 && state.emails.length > previousCount) {
+    const oldTitle = document.title;
+    document.title = `新邮件 · ${oldTitle}`;
+    setTimeout(() => {
+      document.title = oldTitle;
+    }, 4000);
+  }
+}
+
+async function refreshShellData() {
+  try {
+    await Promise.all([fetchStats(), fetchMailboxes()]);
+  } catch (error) {
+    if (handleAdminError(error)) return;
+    toast(error.message || '刷新失败');
+  }
+}
+
+async function refreshSelectedMailbox() {
+  if (!state.selectedAddress) return;
+  try {
+    await fetchEmails(state.selectedAddress);
+  } catch (error) {
+    if (handleAdminError(error)) return;
+    toast(error.message || '刷新失败');
+  }
+}
+
+async function refreshAll() {
+  try {
+    if (!state.hasLoadedShell) {
+      await fetchAccess();
+      await fetchConfig();
+      state.hasLoadedShell = true;
+    }
+    await refreshShellData();
+    if (!state.selectedAddress && state.mailboxes.length) {
+      const firstInDomain = state.mailboxes.find(m => getMailboxDomain(m.address) === state.selectedDomain);
+      if (firstInDomain) {
+        state.selectedAddress = firstInDomain.address;
+        renderMailboxes();
+      }
+    }
+    await refreshSelectedMailbox();
+  } catch (error) {
+    if (handleAdminError(error)) return;
+    toast(error.message || '刷新失败');
+  }
+}
+
+async function selectMailbox(address) {
+  state.selectedAddress = address;
+  state.selectedEmail = null;
+  syncReaderVisibility();
+  switchTab('inbox');
+  renderMailboxes();
+  try {
+    await fetchEmails(address);
+    if (state.emails.length && window.innerWidth > 1080) {
+      showMail(state.emails[0].id);
+    }
+  } catch (error) {
+    if (handleAdminError(error)) return;
+    toast(error.message || '加载邮件失败');
+  }
+}
+
+function deleteMailbox(address) {
+  state.pendingDeleteAddress = address;
+  document.getElementById('delete-address').textContent = address;
+  document.getElementById('delete-modal').classList.add('show');
+}
+
+function closeDeleteModal() {
+  document.getElementById('delete-modal').classList.remove('show');
+  state.pendingDeleteAddress = '';
+}
+
+async function confirmDeleteMailbox() {
+  const address = state.pendingDeleteAddress;
+  if (!address) return;
+
+  const button = document.getElementById('btn-delete-confirm');
+  button.disabled = true;
+  button.textContent = '删除中...';
+
+  try {
+    await apiFetch(`/api/mailboxes/${encodeURIComponent(address)}`, { method: 'DELETE' });
+    if (state.selectedAddress === address) {
+      state.selectedAddress = '';
+      state.selectedEmail = null;
+      state.emails = [];
+      syncReaderVisibility();
+      renderMailList();
+    }
+    closeDeleteModal();
+    toast('邮箱已删除');
+    await refreshAll();
+  } catch (error) {
+    if (handleAdminError(error)) return;
+    toast(error.message || '删除失败');
+  } finally {
+    button.disabled = false;
+    button.textContent = '确认删除';
+  }
+}
+
+async function pollData() {
+  if (state.activeRequests > 0 || document.hidden) return;
+  if (state.activeTab === 'amelu') await window.AmeluAdmin?.refresh();
+  await refreshShellData();
+  await refreshSelectedMailbox();
+}
+
+refreshAll();
+renderMailList();
+syncReaderVisibility();
+document.addEventListener('click', closeDomainMenu);
+document.addEventListener('keydown', event => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    document.getElementById('search')?.focus();
+  }
+  if (event.key === 'Escape') {
+    closeDomainMenu();
+    closeCreateModal();
+    closeDeleteModal();
+  }
+});
+setInterval(() => {
+  pollData();
+}, 10000);
+</script>
+<script src="/amelu-admin.js"></script>
+<script src="/access-passwords.js"></script>
+</body>
+</html>
