@@ -1,234 +1,173 @@
 <div align="center">
 
-# SnowMail
+# SnowMail `v2.0`
 
-**A lightweight catch-all mailbox server for temporary inboxes, multi-domain testing, and shareable single-mailbox pages.**
+**轻量级多域名临时邮箱与 AI 自动化接码服务 · 零构建毛玻璃双轨工作台**  
+**Lightweight Multi-Domain Catch-All Temporary Mailbox & AI Verification Server**
 
-[![Node.js](https://img.shields.io/badge/Node.js-20%2B-233047?style=for-the-badge&logo=node.js&logoColor=8ee29b)](#requirements)
-[![SQLite](https://img.shields.io/badge/SQLite-WAL-233047?style=for-the-badge&logo=sqlite&logoColor=9ecbff)](#backup-and-restore)
-[![Express](https://img.shields.io/badge/Express-API-233047?style=for-the-badge&logo=express&logoColor=ffffff)](#api)
-[![SMTP](https://img.shields.io/badge/SMTP-Catch--All-233047?style=for-the-badge)](#dns-setup)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-0B0E18?style=for-the-badge&logo=node.js&logoColor=CEFF1A)](#快速开始--quick-start)
+[![SQLite](https://img.shields.io/badge/SQLite-WAL-0B0E18?style=for-the-badge&logo=sqlite&logoColor=6B93FF)](#备份与恢复--backup--restore)
+[![Express](https://img.shields.io/badge/REST_%2B_Long_Poll-API-0038FF?style=for-the-badge&logo=express&logoColor=FFFFFF)](#api-接口指南--rest-api)
+[![Tests](https://img.shields.io/badge/Tests-31_Passing-0B0E18?style=for-the-badge)](#测试--testing)
+
+**[简体中文](#简体中文) · [English](#english)**
 
 </div>
 
 ---
 
-SnowMail receives email for one or more domains, stores messages in a local SQLite database, and gives you two ways to read them:
+<a id="简体中文"></a>
 
-- A protected admin dashboard for managing all mailboxes.
-- A public single-mailbox page for sharing one inbox without exposing the full admin panel.
+## 简体中文
 
-It is intentionally small: one Node.js server, one SQLite database, static HTML pages, and normal DNS records.
+**SnowMail** 是一款极简、零前端构建步骤的多域名临时邮箱与验证码接收服务端。只需单个 Node.js 进程与本地 SQLite（WAL 模式），即可同时支撑人工网页接码、单邮箱只读分享，以及外部脚本 / AI Agent 的高并发自动化创建与长轮询取码。
 
-## At A Glance
+### 核心特性
 
-| Area | What SnowMail Provides |
+| 模块 | 能力说明 |
 | --- | --- |
-| Mail receiving | Local SMTP, or Amelu hosted mail with HTTPS synchronization |
-| Domains | Multi-domain mailbox creation and domain picker |
-| Storage | Local SQLite database with WAL mode |
-| Admin | Password login, server-side session cookie, protected APIs |
-| Sharing | Public `verify.html` and `mailbox.html` for one mailbox |
-| Automation | API key support for scripts and external tools |
-| Cleanup | Expiring mailboxes plus permanent mailbox option |
+| **双通道收信** | 支持**本机 SMTP（`:25` Catch-All 直收）**，也支持 **Amelu HTTPS 轮询同步**（无需开放服务器入站 25 端口，容器、NAT 主机与无公网 SMTP 环境均可直接运行） |
+| **多域名与高并发建箱** | 支持多域名切换、自定义前缀或 12.5 亿组合高熵拟人随机地址；SQLite WAL 实测单次并发创建 35+ 邮箱仅需约 `35ms`，合法密钥调用零限流 |
+| **AI 受限操作密码** | 主管理员可签发 `smop_` 前缀的独立高熵操作密码（仅存单向 SHA-256 哈希），仅授予建箱、删箱与读信权限；一键撤销后网页会话与挂起中的 `/wait` 长轮询在 2 秒内立即断开 |
+| **悬浮毛玻璃双轨 UI** | 零构建原生实现流动钴蓝丝绸光带、可调透明度悬浮毛玻璃视窗（跨页面实时同步）、`58px` 独立发光图标轨、`4-8` 位验证码自动提取一键复制，以及自适应满血移动端导航坞 |
+| **单邮箱公开分享** | 通过 `/verify.html` 或 `/mailbox.html?address=user@example.com` 安全分享单个邮箱收件列表（强制剥离 HTML 防注入，并内置独立访问限流） |
+| **生产级安全加固** | Amelu 密钥采用 **AES-256-GCM** 认证加密落盘；内置仅统计失败次数的防爆破限流、`<iframe sandbox="">` 邮件隔离、`CSP` 安全响应头、同源 Cookie 写保护与请求头密钥鉴权 |
 
-## How It Works
-
-```text
-Sender
-  |
-  | email to user@example.com
-  v
-DNS MX record
-  |
-  | points to mx.example.com
-  v
-SnowMail SMTP :25
-  |
-  | parses and stores message
-  v
-SQLite mail.db
-  |
-  +--> Admin dashboard
-  +--> Public single-mailbox page
-  +--> API / automation scripts
-```
-
-## Project Structure
+### 目录结构
 
 ```text
-server.js            Express API + SMTP server + SQLite storage
-lib/amelu.js          Amelu setup, encrypted API keys, API synchronization
-public/amelu-admin.*  Amelu admin form and pending-mail management
-test/amelu.test.js    Integration and routing tests
-public/index.html    Admin login page
-public/verify.html   Public mailbox verification page
-public/mailbox.html  Public single-mailbox inbox page
-private/admin.html   Admin dashboard, served only after login
-mail.db              Runtime database, created on the server
+server.js                   Express HTTP 服务 + 本机 SMTP 服务 + SQLite 存储核心
+lib/
+  access-control.js         主管理员恒定时间校验 + smop_ 受限操作密码哈希与吊销管理
+  amelu.js                  Amelu 域名探测、AES-256-GCM 凭据加密与增量分页同步引擎
+private/
+  admin.html                受登录会话保护的双轨毛玻璃管理后台（桌面端 + 旗舰移动端）
+public/
+  index.html                管理员 / 操作员登录页（支持一键切换公开邮箱快捷查询）
+  verify.html               公开单邮箱地址验证入口页
+  mailbox.html              公开单邮箱只读收件页（与后台实时同步视窗透明度）
+  snowmail-21st.css         全局深黑曜石与电光钴蓝毛玻璃视觉系统
+  snowmail-ui.js            丝绸光带着色器、追光折射按钮、零抖动橡皮筋透明度滑块与验证码识别器
+  amelu-admin.js / .css     后台 Amelu 域名接入与待分配邮件管理模块
+  access-passwords.js/.css  后台 AI 操作密码签发、一键复制 Agent 指引与撤销模块
+test/
+  access-control.test.js    权限隔离、长轮询撤销、并发 35 箱压测与防爆破集成测试
+  amelu.test.js             Amelu 加密、Catch-All 防伪造路由、断点续扫与脚本语法测试
+.env.example                环境变量配置模板（程序不自动读取 .env，请通过运行环境注入）
 ```
 
-`mail.db` is not committed to Git. It is the runtime database that contains created mailboxes and received emails.
+### 快速开始
 
-## Requirements
-
-- Node.js 20+ (Node.js 22 LTS recommended)
-- For local SMTP: a server with inbound port `25` open
-- For Amelu: outbound HTTPS access; no inbound SMTP port required
-- At least one domain you can configure with DNS
-- Optional but recommended: Nginx in front of the web UI
-
-Install and start:
+环境要求：**Node.js 20+**（推荐 Node.js 22 LTS）。
 
 ```bash
 npm install
-npm start
 ```
 
-## 接入 Amelu
+#### 方式一：仅使用 Amelu HTTPS 同步收信（无需开放 25 端口，推荐）
 
-域名需要先在 [Amelu](https://app.amelu.org/) 添加并配置收信 DNS。SnowMail 不代替 DNS 服务商配置域名。
+域名需先在 [Amelu](https://app.amelu.org/) 添加并配好收信 DNS。启动时关闭本机 SMTP 监听：
 
-如果只使用 Amelu，启动时关闭本机 SMTP：
-
+**Linux / macOS：**
 ```bash
-SMTP_ENABLED=false API_KEY='your-long-random-admin-password' npm start
+SMTP_ENABLED=false API_KEY='replace-with-a-long-random-password' npm start
 ```
 
-Windows PowerShell：
-
+**Windows PowerShell：**
 ```powershell
-$env:SMTP_ENABLED='false'
-$env:API_KEY='your-long-random-admin-password'
+$env:SMTP_ENABLED = 'false'
+$env:API_KEY = 'replace-with-a-long-random-password'
 npm start
 ```
 
-打开后台，点击 **添加 Amelu**：
+启动后访问 `http://127.0.0.1:8080` 登录后台，点击左侧地球图标进入 **Amelu 邮局接入**：
+1. 粘贴具备邮箱管理与读信权限的 Amelu API Key，点击 **读取域名**。
+2. 选择域名并检查 DNS 与现有 Catch-All 状态（若尚无 Catch-All，确认后会自动创建专用汇集邮箱并设为 Catch-All；若已有独立邮箱 Catch-All 则直接沿用，不修改现有设置）。
+3. 选择收件分配方式：
+   - **每封确认后分配（默认 `review`）**：适合多人严谨隔离，未确认归属的邮件先进入后台「待分配邮件」。
+   - **按邮件标注自动分配（`headers`）**：适合个人或 AI 脚本批量自动化接码；当 `To/Cc/Bcc` 中恰好匹配一个本域名下已创建且未过期的临时地址时自动入箱。
 
-1. 粘贴 Amelu API Key，点击“读取域名”。此密钥需要管理邮箱和读取邮件的权限。
-2. 选择域名，检查已有收件设置。
-3. 没有 Catch-all 时，确认后自动创建一个专用收件邮箱并将其设为 Catch-all。随机临时地址只在本地创建，不各自占用独立邮箱配额。
-4. 已有 Catch-all 时直接用 API Key 验证读信并沿用该邮箱，无需填写邮箱密码。外部转发地址不能直接用作此收件邮箱。
-5. 选择分配方式、确认接入，再通过原有“新建邮箱”功能创建地址。域名会出现在原来的域名选择中。
+#### 方式二：使用本机 SMTP（`:25` 端口直收）
 
-### 邮件归属与密送限制
-
-SnowMail 使用 Amelu API 读取邮件列表和正文。该 API 没有完整头部、Bcc 和原始 SMTP 收件地址，因此不能保证识别每封邮件的实际投递地址。
-
-- **每封确认后分配（默认）**：先进入“待分配邮件”，只对管理员可见。选择实际收件邮箱后，邮件才进入普通/公开收件页。
-- **按邮件标注自动分配（需明确勾选）**：适合自己使用的一组临时地址。只有 API 返回的 To/Cc 中恰好一个本域名地址，且该地址已创建、未过期、创建时间不晚于收信时间时才自动分配。多个地址、地址缺失等情况进入待分配。
-- 邮件中的地址可能被伪造；自动模式不适用于不同用户之间的私密邮箱隔离。某些发信方会去掉 Bcc，无法保证每封密送都自动识别。多个收件人不会根据邮件头自动复制到多个公开邮箱。
-- 已有独立邮箱和别名优先于 Catch-all，不能作为这里的随机地址使用。该接入同步专用汇集邮箱，不会把 admin/postmaster 等独立账户的私人邮件导入公开页。
-
-### 同步、删除和恢复
-
-- 默认每轮结束后等待 15 秒再同步；每个域名每轮最多扫描 250 封，然后继续下一批。支持“立即同步”、暂停/恢复和状态错误提示。
-- 按时间从新到旧扫描列表，只导入首次接入之后、且处于邮件保留窗口内的邮件。先在 SnowMail 创建临时地址，再用于接收邮件。暂停时间超过保留窗口的邮件不会自动补回。
-- 去重记录随数据库持久化，本地删除邮件或删除/重建邮箱后，旧邮件不会重新导入。去重标识不会随邮件清理而删除，会随邮件数量增长。
-- 删除本地邮箱、忽略待分配邮件、暂停同步均不会删除 Amelu 原件，也不会撤销 Catch-all。需要改变远端收信设置时，在 Amelu 管理界面处理。
-- 待分配邮件同样遵守 `RETENTION_HOURS`。永久邮箱仅表示地址不过期，不代表邮件永久保存。
-- 正文由 API 解码返回，每种正文最多 256 KB。API 暂不支持原始邮件和附件下载；原文入口会提示在 Amelu 查看，已经缓存的原文仍可查看。
-- 旧连接首次成功使用 API 扫描时会清除本地凭据中的旧邮箱登录信息、重置分页位置，保留邮件和去重记录。若旧 API Key 已失效，用新 Key 重新连接即可。
-- 多个来源可以同时使用。接入 Amelu 的域名由 Amelu 收信，本机 SMTP 不再接受该域名，防止绕过接入配置。
-
-### 凭据与备份
-
-API Key 使用 AES-256-GCM 加密后存入 `mail.db`，不会回传前端或写入代码。接入和同步不要求、不保存邮箱登录密码。首次保存连接时会在数据目录生成 `.amelu-key`。请把 **数据库和 `.amelu-key` 一起备份**，并限制数据目录权限；丢失密钥将无法解密已存凭据。也可以用固定的 `AMELU_SECRET_KEY`（64 个十六进制字符）提供加密密钥，备份恢复时必须使用同一值。
-
-更新 API Key：再次读取域名并重新连接。不要把临时测试密钥写进环境示例或提交到代码库。网页入口应通过 HTTPS 反向代理访问，沿用原有管理员登录。
-
-`.env.example` 仅提供变量示例，程序不会自动读取 `.env`。运行 `npm test` 验证连接恢复、鉴权、分配、分页、重复同步和删除场景。
-
-## 操作密码（给 AI 或协作者使用）
-
-用原主管理员密码登录后台，打开 **操作密码**，填写用途备注后点击 **创建操作密码**。可以分别为不同 AI 创建密码，单独撤销。
-
-- 操作密码可登录同一后台，也可通过 `Authorization: Bearer <操作密码>` 或 `x-api-key: <操作密码>` 调用 API。
-- 可创建、删除本站所有临时邮箱，列出邮箱、读取邮件正文和已有原文。删除邮箱会一并删除其本地邮件；仍不删除 Amelu 原件。
-- 不能管理操作密码、访问 Amelu 管理接口、导入邮件或逐封删除邮件；完整权限仍属于主管理员。
-- 密码自动随机生成，仅创建时返回一次。点击 **复制给 AI 的接入信息** 可一起复制站点地址、密码和常用接口。
-- 数据库只保存密码哈希及用途、创建时间、最近使用时间和撤销时间，不保存明文密码。丢失后请撤销重建。
-- 撤销后新请求和现有网页登录立即失效，正在等待新邮件的请求会在下次检查时停止（约 2 秒内）。不影响其他密码、邮箱或邮件。
-- 重启后操作密码和撤销记录保留，浏览器需重新登录。原 `API_KEY` 仍是主管理员密码，无需更换。
-
-管理接口（仅主管理员）：`GET /api/admin/access-passwords`、`POST /api/admin/access-passwords`（JSON：`{"label":"开发 AI"}`）、`DELETE /api/admin/access-passwords/:id`。`GET /api/admin/session` 返回当前身份及权限，不返回任何密码。
-
-## Configuration
-
-SnowMail is configured with environment variables.
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `MAIL_DOMAIN` | `example.com` | Backward-compatible single default domain |
-| `MAIL_DOMAINS` | `MAIL_DOMAIN` | Comma-separated domain allowlist |
-| `DEFAULT_MAIL_DOMAIN` | first domain | Default domain selected in the admin panel |
-| `SMTP_PORT` | `25` | SMTP listening port |
-| `SMTP_ENABLED` | `true` | Set `false` for Amelu-only receiving, without an SMTP listener |
-| `API_PORT` | `8080` | HTTP API and web UI port |
-| `API_HOST` | `0.0.0.0` | HTTP bind address; use `127.0.0.1` for local checks |
-| `RETENTION_HOURS` | `48` | Cleanup window for old emails |
-| `CLEANUP_INTERVAL` | `10` | Cleanup interval in minutes |
-| `API_KEY` | empty | Admin password and API key |
-| `DATA_DIR` | project directory | Persistent directory for `mail.db` and `.amelu-key` |
-| `AMELU_SYNC_SECONDS` | `15` | Delay between sync rounds, minimum 5 seconds |
-| `AMELU_SECRET_KEY` | generated key file | Optional fixed 64-character hexadecimal encryption key |
-
-Example:
+服务器需具备入站 `25` 端口权限，并将域名的 `MX` 记录指向服务器：
 
 ```bash
 MAIL_DOMAINS=example.com,example.net \
 DEFAULT_MAIL_DOMAIN=example.com \
-API_KEY=change-this-password \
+SMTP_ENABLED=true \
+SMTP_PORT=25 \
+API_PORT=8080 \
+API_KEY='replace-with-a-long-random-password' \
 npm start
 ```
 
-## Production Setup
+### 环境变量配置
 
-### systemd
+| 变量名 | 默认值 | 说明 |
+| --- | --- | --- |
+| `API_KEY` | 空（必填） | 主管理员登录密码与最高权限 API Key（建议 24 位以上随机字符串） |
+| `API_PORT` | `8080` | Web 界面与 HTTP API 监听端口 |
+| `API_HOST` | `0.0.0.0` | HTTP 绑定地址；若本机反代可设为 `127.0.0.1` |
+| `SMTP_ENABLED` | `true` | 设为 `false` 时关闭本机 25 端口监听，仅通过 Amelu 收信 |
+| `MAIL_DOMAINS` | `example.com` | 本机 SMTP 允许接收的域名列表（英文逗号分隔，兼容旧变量 `MAIL_DOMAIN`） |
+| `DEFAULT_MAIL_DOMAIN` | 首个域名 | 后台默认选中的发号域名 |
+| `SMTP_PORT` | `25` | 本机 SMTP 监听端口 |
+| `RETENTION_HOURS` | `48` | 邮件正文自动清理保留时长（小时） |
+| `CLEANUP_INTERVAL` | `10` | 过期邮箱与过期邮件定时巡检间隔（分钟） |
+| `DATA_DIR` | 项目根目录 | `mail.db` 与 `.amelu-key` 的持久化存放目录 |
+| `AMELU_SYNC_SECONDS` | `15` | Amelu 轮询间隔秒数（最小 `5` 秒） |
+| `AMELU_SECRET_KEY` | 自动生成文件 | 可选的 64 位十六进制密钥；不填则在 `DATA_DIR/.amelu-key` 自动生成 |
+| `TRUST_PROXY` | `loopback` | 反向代理信任策略（默认仅信任本机 Nginx / Tunnel 回环转发，防公网伪造 IP） |
+| `AUTH_MAX_FAILURES_PER_MIN` | `15` | 单 IP 每分钟允许的最大密码输错次数（合法密钥请求不受任何次数限制） |
 
-Create `/etc/systemd/system/snowmail.service`:
+### API 接口指南（AI Agent 与脚本自动化）
 
-```ini
-[Unit]
-Description=SnowMail
-After=network.target
+所有管理与自动化接口均需通过 **HTTP 请求头**携带主管理员密码或 `smop_` 操作密码（出于安全考虑，已禁用 URL `?key=` 明文传参）：
 
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/mail-server
-ExecStart=/usr/bin/node server.js
-Restart=always
-RestartSec=5
-Environment=MAIL_DOMAIN=example.com
-Environment=MAIL_DOMAINS=example.com,example.net
-Environment=DEFAULT_MAIL_DOMAIN=example.com
-Environment=SMTP_PORT=25
-Environment=API_PORT=8080
-Environment=RETENTION_HOURS=48
-Environment=API_KEY=change-this-password
-
-[Install]
-WantedBy=multi-user.target
+```http
+Authorization: Bearer <API_KEY 或 smop_操作密码>
+# 或
+x-api-key: <API_KEY 或 smop_操作密码>
 ```
 
-Start the service:
+常用接口：
+
+```text
+GET    /api/health                              服务在线与运行时长探针（公开）
+GET    /api/config                              获取可用收信域名列表
+POST   /api/generate                            创建随机或自定义前缀临时邮箱
+GET    /api/mailboxes                           列出全部临时邮箱及各自收件数
+GET    /api/mailbox/:address                    获取指定邮箱的邮件列表
+GET    /api/mailbox/:address/latest             获取指定邮箱最新一封邮件详情
+GET    /api/mailbox/:address/wait?timeout=30    阻塞长轮询等待新邮件（收到即刻返回正文）
+GET    /api/email/:id                           按邮件 ID 读取完整文本与 HTML
+DELETE /api/mailboxes/:address                  删除指定邮箱及其全部本地邮件
+```
+
+一键创建邮箱并阻塞等待新验证码邮件示例：
 
 ```bash
-systemctl daemon-reload
-systemctl enable snowmail
-systemctl restart snowmail
-systemctl status snowmail --no-pager
+# 1. 创建 24 小时有效的随机临时邮箱
+curl -X POST https://mail.example.com/api/generate \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer smop_your_operator_password' \
+  -d '{"domain":"example.com","retention_hours":24}'
+
+# 2. 长轮询等待该邮箱收到新邮件（最长挂起 60 秒）
+curl "https://mail.example.com/api/mailbox/alex.chen.8k4m%40example.com/wait?timeout=60" \
+  -H 'Authorization: Bearer smop_your_operator_password'
 ```
 
-### Nginx
+### 生产环境部署与备份
 
-Example reverse proxy for the web UI:
+#### Nginx 反向代理参考
 
 ```nginx
 server {
-    listen 80;
+    listen 443 ssl http2;
     server_name mail.example.com;
+
+    # SSL 证书配置略
 
     location / {
         proxy_pass http://127.0.0.1:8080;
@@ -237,120 +176,86 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 320s;
     }
 }
 ```
 
-## DNS Setup
+> `proxy_read_timeout 320s` 可确保 `/api/mailbox/:address/wait` 长轮询连接不会被反向代理提前切断。
 
-For each domain that should receive mail, add two records:
+#### 备份与恢复
 
-```text
-A    mx    SERVER_IP        DNS only
-MX   @     mx.example.com   Priority 10
-```
+持久化状态仅包含 `DATA_DIR` 下的以下文件（请务必**同时备份数据库与密钥文件**）：
+- `mail.db`、`mail.db-wal`、`mail.db-shm`
+- `.amelu-key`（若未通过环境变量固定指定 `AMELU_SECRET_KEY`）
 
-Example for `example.com`:
+### 测试
 
-```text
-A    mx    192.0.2.10       DNS only
-MX   @     mx.example.com   Priority 10
-```
-
-Keep these rules in mind:
-
-- The `mx` A record must be DNS only. Do not proxy it.
-- The web UI record, such as `mail.example.com`, may be proxied through Cloudflare or another CDN.
-- MX records point to hostnames, not directly to IP addresses.
-- If the server IP changes, update A records. MX records usually do not need to change.
-
-## Web Pages
-
-| Page | Purpose |
-| --- | --- |
-| `/` | Admin login page |
-| `/admin` | Protected admin dashboard |
-| `/verify.html` | Public page where a user enters a mailbox address |
-| `/mailbox.html?address=user@example.com` | Public inbox for one mailbox |
-
-The public pages only use `/api/public/*` endpoints and return limited mailbox data.
-
-## API
-
-Admin endpoints require either an admin session cookie or an API key:
-
-```text
-x-api-key: your-api-key
-Authorization: Bearer your-api-key
-```
-
-Common endpoints:
-
-```text
-GET    /api/health
-POST   /api/admin/login
-POST   /api/admin/logout
-GET    /api/config
-POST   /api/generate
-GET    /api/mailboxes
-GET    /api/mailbox/:address
-GET    /api/email/:id
-GET    /api/mailbox/:address/wait?timeout=30
-DELETE /api/mailboxes/:address
-DELETE /api/email/:id
-```
-
-Create a mailbox:
+运行内置全量单元测试与真实子进程鉴权 / 并发压测套件：
 
 ```bash
-curl -X POST https://mail.example.com/api/generate \
-  -H 'content-type: application/json' \
-  -H 'x-api-key: your-api-key' \
-  -d '{"domain":"example.com","retention_hours":24}'
+npm test
 ```
 
-Create a permanent custom mailbox:
+---
+
+<a id="english"></a>
+
+## English
+
+**SnowMail (`v2.0`)** is a lightweight, zero-build multi-domain temporary mailbox and verification catch-all server built with Node.js, Express, and SQLite (WAL). It provides a protected glassmorphic admin workspace, shareable read-only single-inbox pages, and high-concurrency REST + long-polling APIs tailored for AI agents and automated test suites.
+
+### Key Highlights
+
+- **Dual Mail Transport**: Receive mail directly via the built-in **SMTP server (`:25` catch-all)** or via **Amelu HTTPS synchronization** (outbound HTTPS only—no inbound port `25` required, ideal for containers, PaaS, and NAT environments).
+- **High-Concurrency Mailbox Creation**: Multi-domain picker, custom prefixes, or high-entropy human-readable local-parts (`1.25B+` combinations). Sustains 35+ concurrent `POST /api/generate` calls in `~35ms` with zero rate-limiting on valid keys.
+- **Scoped AI Operator Passwords (`smop_`)**: Issue independent, revocable 256-bit operator tokens stored solely as SHA-256 hashes. Operators can create/delete temporary mailboxes and read/wait for messages without accessing Amelu configuration or master admin controls. Revocation terminates browser sessions and in-flight `/wait` requests within 2 seconds.
+- **Zero-Build Floating Glass UI (`v2.0`)**: Animated cobalt silk-ribbon `<canvas>` backdrop, live elastic glass opacity synced across tabs, `58px` dual-rail navigation, automatic `4-8` digit OTP code extraction, `<iframe sandbox="">` isolated HTML preview, and a full-featured mobile glass dock.
+- **Hardened by Default**: AES-256-GCM encrypted upstream credentials at rest, failure-only brute-force protection, loopback-scoped `TRUST_PROXY`, header-only API authentication, `CSP` + `X-Frame-Options: DENY`, and same-origin CSRF checks on cookie mutations.
+
+### Quick Start
+
+Requires **Node.js 20+** (Node.js 22 LTS recommended).
 
 ```bash
-curl -X POST https://mail.example.com/api/generate \
-  -H 'content-type: application/json' \
-  -H 'x-api-key: your-api-key' \
-  -d '{"custom":"demo-login","domain":"example.com","retention_hours":0}'
+npm install
+
+# Start in Amelu-only mode (no port 25 listener required)
+SMTP_ENABLED=false API_KEY='replace-with-a-long-random-password' npm start
 ```
 
-## Backup And Restore
+Open `http://127.0.0.1:8080` to sign in with `API_KEY` (or a `smop_` operator password).
 
-The most important file is:
+### Environment Variables
 
-```text
-/opt/mail-server/mail.db
+| Variable | Default | Description |
+| --- | --- | --- |
+| `API_KEY` | empty (required) | Master admin password & full-privilege API key |
+| `API_PORT` | `8080` | HTTP server & Web UI port |
+| `API_HOST` | `0.0.0.0` | HTTP bind address (`127.0.0.1` recommended behind local reverse proxy) |
+| `SMTP_ENABLED` | `true` | Set `false` to disable local SMTP listener and use Amelu HTTPS sync only |
+| `MAIL_DOMAINS` | `example.com` | Comma-separated domain allowlist for local SMTP (`MAIL_DOMAIN` also supported) |
+| `DEFAULT_MAIL_DOMAIN` | first domain | Default domain selected in the workspace |
+| `SMTP_PORT` | `25` | Local SMTP listening port |
+| `RETENTION_HOURS` | `48` | Retention window in hours before old messages are purged |
+| `CLEANUP_INTERVAL` | `10` | Background cleanup interval in minutes |
+| `DATA_DIR` | project root | Directory storing `mail.db` and `.amelu-key` |
+| `AMELU_SYNC_SECONDS` | `15` | Polling delay between Amelu sync cycles (minimum `5`) |
+| `AMELU_SECRET_KEY` | `.amelu-key` file | Optional 64-char hex key for AES-256-GCM credential encryption |
+| `TRUST_PROXY` | `loopback` | Express `trust proxy` policy (`loopback` trusts local Nginx/cloudflared) |
+| `AUTH_MAX_FAILURES_PER_MIN` | `15` | Max failed password/key guesses per IP per minute (valid keys are never throttled) |
+
+### REST API
+
+Authenticate all non-public `/api/*` requests via HTTP headers (`?key=` query strings are disabled to prevent log leakage):
+
+```http
+Authorization: Bearer <API_KEY or smop_password>
+x-api-key: <API_KEY or smop_password>
 ```
 
-When SQLite WAL files exist, keep them too:
-
-```text
-/opt/mail-server/mail.db-wal
-/opt/mail-server/mail.db-shm
-```
-
-Simple backup:
+Run the full test suite (`31` unit & integration tests):
 
 ```bash
-cd /opt/mail-server
-mkdir -p backups
-cp -a mail.db mail.db-wal mail.db-shm backups/ 2>/dev/null || true
+npm test
 ```
-
-If `mail.db` survives, created mailboxes and old emails survive. If `mail.db` is lost, old emails are lost, but the domains can still receive new mail after DNS and SnowMail are configured again.
-
-## Security Checklist
-
-- Set `API_KEY` before exposing the service.
-- Do not commit `mail.db`, real API keys, or private server IPs.
-- Keep SMTP port `25` open only when you intend to receive email.
-- Use HTTPS for the web UI.
-- Remember that public mailbox pages are address-based access, not full authentication. Anyone who knows an existing mailbox address can view that mailbox through the public page.
-
-## License
-
-No license has been selected yet.
